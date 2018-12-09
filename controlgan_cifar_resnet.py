@@ -404,14 +404,14 @@ with tf.Session() as session:
     if ORTHO_REG:
         gen_gv = gen_opt.compute_gradients(gen_cost + 1e-5*ortho_reg_gen, var_list=lib.params_with_name('Generator'))
         disc_gv = disc_opt.compute_gradients(disc_cost + 1e-5*ortho_reg_disc, var_list=disc_params)
-        class_gv = disc_opt.compute_gradients(class_cost + 1e-5*ortho_reg_class, var_list=class_params)
+        class_gv = class_opt.compute_gradients(class_cost + 1e-5*ortho_reg_class, var_list=class_params)
     else:
         gen_gv = gen_opt.compute_gradients(gen_cost, var_list=lib.params_with_name('Generator'))
         disc_gv = disc_opt.compute_gradients(disc_cost, var_list=disc_params)
-        class_gv = disc_opt.compute_gradients(class_cost, var_list=class_params)
+        class_gv = class_opt.compute_gradients(class_cost, var_list=class_params)
     gen_train_op = gen_opt.apply_gradients(gen_gv)
     disc_train_op = disc_opt.apply_gradients(disc_gv)
-    class_train_op = disc_opt.apply_gradients(class_gv)
+    class_train_op = class_opt.apply_gradients(class_gv)
 
     # Function for generating samples
     frame_i = [0]
