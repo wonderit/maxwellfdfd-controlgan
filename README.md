@@ -65,5 +65,7 @@ https://github.com/wonderit/maxwellfdfd
 
 ## Reference
 https://github.com/BrainJellyPie/ControlGAN
+
 https://github.com/igul222/improved_wgan_training
+
 https://github.com/wonderit/ControlGAN
