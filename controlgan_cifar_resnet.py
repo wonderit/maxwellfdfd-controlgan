@@ -534,7 +534,7 @@ with tf.Session() as session:
 
             generate_image(iteration, _data)
 
-        if (iteration < 200) or (iteration % 1000 == 999):
+        if (iteration < 20) or (iteration % 100 == 0):
         #if iteration % 1000 == 999:
             lib.plot.flush()
 
