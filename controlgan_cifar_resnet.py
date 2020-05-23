@@ -17,7 +17,6 @@ import tflib.plot
 
 import numpy as np
 import tensorflow as tf
-import sklearn.datasets
 
 import time
 import functools
