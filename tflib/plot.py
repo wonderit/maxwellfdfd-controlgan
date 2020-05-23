@@ -34,7 +34,7 @@ def flush():
 		plt.ylabel(name)
 		plt.savefig(name.replace(' ', '_')+'.jpg')
 
-	print "iter {}\t{}".format(_iter[0], "\t".join(prints))
+	print("iter {}\t{}".format(_iter[0], "\t".join(prints)))
 	_since_last_flush.clear()
 
 	with open('log.pkl', 'wb') as f:
