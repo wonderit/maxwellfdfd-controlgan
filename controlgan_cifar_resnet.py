@@ -62,7 +62,7 @@ ACGAN_SCALE_G = 1.0 # How to scale generator's ACGAN loss relative to WGAN loss
 INI_GAMMA = 0.0 #Initial gamma
 
 if CONDITIONAL and (not ACGAN) and (not NORMALIZATION_D):
-    print "WARNING! Conditional model without normalization in D might be effectively unconditional!"
+    print("WARNING! Conditional model without normalization in D might be effectively unconditional!")
 
 DEVICES = ['/gpu:{}'.format(i) for i in xrange(N_GPUS)]
 if len(DEVICES) == 1: # Hack because the code assumes 2 GPUs
@@ -354,21 +354,21 @@ with tf.Session() as session:
             disc_w = param_disc
             if ('Filters' in disc_w.name) & ('Conv' in disc_w.name):
                 ortho_reg_disc += Ortho_reg(disc_w)
-                print 'Ortho regularized: ' + disc_w.name
+                print('Ortho regularized: ' + disc_w.name)
 
         ortho_reg_gen = 0.
         for param_gen in gen_params:
             gen_w = param_gen
             if ('Filters' in gen_w.name) & ('Conv' in gen_w.name):
                 ortho_reg_gen += Ortho_reg(gen_w)
-                print 'Ortho regularized: ' + gen_w.name
+                print('Ortho regularized: ' + gen_w.name)
 
         ortho_reg_class = 0.
         for param_class in class_params:
             class_w = param_class
             if ('Filters' in class_w.name) & ('Conv' in class_w.name):
                 ortho_reg_class += Ortho_reg(class_w)
-                print 'Ortho regularized: ' + class_w.name
+                print('Ortho regularized: ' + class_w.name)
     
     if DECAY:
         #decay = tf.maximum(1., 1.-(tf.cast(_iteration, tf.float32)/ITERS))
@@ -443,7 +443,7 @@ with tf.Session() as session:
 
 
     for name,grads_and_vars in [('G', gen_gv), ('D', disc_gv), ('C', class_gv)]:
-        print "{} Params:".format(name)
+        print("{} Params:".format(name))
         total_param_count = 0
         for g, v in grads_and_vars:
             shape = v.get_shape()
@@ -455,12 +455,12 @@ with tf.Session() as session:
             total_param_count += param_count
 
             if g == None:
-                print "\t{} ({}) [no grad!]".format(v.name, shape_str)
+                print("\t{} ({}) [no grad!]".format(v.name, shape_str))
             else:
-                print "\t{} ({})".format(v.name, shape_str)
-        print "Total param count: {}".format(
+                print("\t{} ({})".format(v.name, shape_str))
+        print("Total param count: {}".format(
             locale.format("%d", total_param_count, grouping=True)
-        )
+        ))
 
     session.run(tf.initialize_all_variables())
 
