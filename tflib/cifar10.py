@@ -28,7 +28,7 @@ def cifar_generator(filenames, batch_size, data_dir):
         np.random.set_state(rng_state)
         np.random.shuffle(labels)
 
-        for i in range(len(images) / batch_size):
+        for i in range(int(len(images) / batch_size)):
             yield (images[i*batch_size:(i+1)*batch_size], labels[i*batch_size:(i+1)*batch_size])
 
     return get_epoch
