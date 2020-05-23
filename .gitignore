@@ -1,0 +1,12 @@
+# Pycharm
+.idea/
+
+# data files
+cifar10/
+
+# byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+
+# tmp files
+tmp/
