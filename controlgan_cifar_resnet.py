@@ -63,7 +63,7 @@ INI_GAMMA = 0.0 #Initial gamma
 if CONDITIONAL and (not ACGAN) and (not NORMALIZATION_D):
     print("WARNING! Conditional model without normalization in D might be effectively unconditional!")
 
-DEVICES = ['/gpu:{}'.format(i) for i in xrange(N_GPUS)]
+DEVICES = ['/gpu:{}'.format(i) for i in range(N_GPUS)]
 if len(DEVICES) == 1: # Hack because the code assumes 2 GPUs
     DEVICES = [DEVICES[0], DEVICES[0]]
 
@@ -427,7 +427,7 @@ with tf.Session() as session:
     samples_100 = Generator(100, fake_labels_100)
     def get_inception_score(n):
         all_samples = []
-        for i in xrange(n/100):
+        for i in range(n/100):
             all_samples.append(session.run(samples_100))
         all_samples = np.concatenate(all_samples, axis=0)
         all_samples = ((all_samples+1.)*(255.99/2)).astype('int32')
@@ -484,13 +484,13 @@ with tf.Session() as session:
     datagen.fit(_data.reshape(-1, 3, 32, 32))
     
     dev_disc_acgan = -np.log(0.1)
-    for iteration in xrange(ITERS):
+    for iteration in range(ITERS):
         start_time = time.time()
 
         if iteration > 0:
             _ = session.run([gen_train_op], feed_dict={_iteration:iteration, gamma_input: gamma_param})
 
-        for i in xrange(N_CRITIC):
+        for i in range(N_CRITIC):
             _data,_labels = gen.next()
             if CONDITIONAL and ACGAN:
                 _disc_cost, _disc_wgan, _, _disc_acgan, _disc_acgan_fake, _disc_acgan_acc, _disc_acgan_fake_acc, = session.run([disc_cost, disc_wgan, disc_train_op, disc_acgan, disc_acgan_fake, disc_acgan_acc, disc_acgan_fake_acc], feed_dict={all_real_data_int: _data, all_real_labels:_labels, _iteration:iteration, gamma_input: gamma_param})
