@@ -7,7 +7,7 @@ import pickle
 
 def unpickle(file):
     fo = open(file, 'rb')
-    dict = pickle.load(fo)
+    dict = pickle.load(fo, encoding='latin1')
     fo.close()
     return dict['data'], dict['labels']
 
@@ -28,7 +28,7 @@ def cifar_generator(filenames, batch_size, data_dir):
         np.random.set_state(rng_state)
         np.random.shuffle(labels)
 
-        for i in xrange(len(images) / batch_size):
+        for i in range(len(images) / batch_size):
             yield (images[i*batch_size:(i+1)*batch_size], labels[i*batch_size:(i+1)*batch_size])
 
     return get_epoch
