@@ -480,7 +480,7 @@ with tf.Session() as session:
         vertical_flip=False,
         data_format="channels_first" )
 
-    _data,_labels = gen.next()
+    _data,_labels = next(gen)
     datagen.fit(_data.reshape(-1, 3, 32, 32))
     
     dev_disc_acgan = -np.log(0.1)
@@ -491,12 +491,12 @@ with tf.Session() as session:
             _ = session.run([gen_train_op], feed_dict={_iteration:iteration, gamma_input: gamma_param})
 
         for i in range(N_CRITIC):
-            _data,_labels = gen.next()
+            _data,_labels = next(gen)
             if CONDITIONAL and ACGAN:
                 _disc_cost, _disc_wgan, _, _disc_acgan, _disc_acgan_fake, _disc_acgan_acc, _disc_acgan_fake_acc, = session.run([disc_cost, disc_wgan, disc_train_op, disc_acgan, disc_acgan_fake, disc_acgan_acc, disc_acgan_fake_acc], feed_dict={all_real_data_int: _data, all_real_labels:_labels, _iteration:iteration, gamma_input: gamma_param})
                 if _disc_acgan_acc < STOP_ACC_CLASS:
                     for clsitr in range(1):
-                        _data,_labels = gen.next()
+                        _data,_labels = next(gen)
                         _ = session.run([class_train_op], feed_dict={all_real_data_int: datagen.flow(_data.reshape(-1, 3, 32, 32), batch_size=BATCH_SIZE, shuffle=False)[0].reshape(BATCH_SIZE, OUTPUT_DIM), all_real_labels:_labels, _iteration:iteration, gamma_input: gamma_param})
                     #_ = session.run([class_train_op], feed_dict={all_real_data_int: _data, all_real_labels:_labels, _iteration:iteration, gamma_input: gamma_param})
                 gamma_param = min(2., max(0.0, gamma_param + 0.001*(_disc_acgan_fake - 1.0*_disc_acgan)))
