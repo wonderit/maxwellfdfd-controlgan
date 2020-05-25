@@ -258,13 +258,13 @@ with tf.Session() as session:
     for i, device in enumerate(DEVICES_A):
         with tf.device(device):
             real_and_fake_data = tf.concat([
-                all_real_data_splits[i], 
-                all_real_data_splits[len(DEVICES_A)+i], 
-                fake_data_splits[i], 
+                all_real_data_splits[i],
+                all_real_data_splits[len(DEVICES_A)+i],
+                fake_data_splits[i],
                 fake_data_splits[len(DEVICES_A)+i]
             ], axis=0)
             real_and_fake_labels = tf.concat([
-                labels_splits[i], 
+                labels_splits[i],
                 labels_splits[len(DEVICES_A)+i],
                 labels_splits[i],
                 labels_splits[len(DEVICES_A)+i]
@@ -307,7 +307,7 @@ with tf.Session() as session:
             real_data = tf.concat([all_real_data_splits[i], all_real_data_splits[len(DEVICES_A)+i]], axis=0)
             fake_data = tf.concat([fake_data_splits[i], fake_data_splits[len(DEVICES_A)+i]], axis=0)
             labels = tf.concat([
-                labels_splits[i], 
+                labels_splits[i],
                 labels_splits[len(DEVICES_A)+i],
             ], axis=0)
             alpha = tf.random_uniform(
@@ -322,7 +322,7 @@ with tf.Session() as session:
                 CT_D1 = Discriminator(interpolates, labels)
                 CT_D2 = Discriminator(interpolates, labels)
                 CT_dist = tf.maximum(.0, tf.sqrt(tf.square(CT_D1-CT_D2)))
-            
+
             slopes = tf.sqrt(tf.reduce_sum(tf.square(gradients), reduction_indices=[1]))
             if CT_REG:
                 gradient_penalty = 10*tf.reduce_mean((slopes-1.)**2) + 2*tf.reduce_mean(CT_dist)
@@ -368,7 +368,7 @@ with tf.Session() as session:
             if ('Filters' in class_w.name) & ('Conv' in class_w.name):
                 ortho_reg_class += Ortho_reg(class_w)
                 print('Ortho regularized: ' + class_w.name)
-    
+
     if DECAY:
         #decay = tf.maximum(1., 1.-(tf.cast(_iteration, tf.float32)/ITERS))
         decay = tf.cond(tf.cast(_iteration, tf.float32)/ITERS>0.5, lambda: tf.constant(0.5, dtype=tf.float32), lambda: tf.constant(1.0, dtype=tf.float32))
@@ -427,7 +427,7 @@ with tf.Session() as session:
     samples_100 = Generator(100, fake_labels_100)
     def get_inception_score(n):
         all_samples = []
-        for i in range(n/100):
+        for i in range(n//100):
             all_samples.append(session.run(samples_100))
         all_samples = np.concatenate(all_samples, axis=0)
         all_samples = ((all_samples+1.)*(255.99/2)).astype('int32')
@@ -464,9 +464,9 @@ with tf.Session() as session:
     session.run(tf.initialize_all_variables())
 
     gen = inf_train_gen()
-    
+
     gamma_param = INI_GAMMA
-    
+
     datagen = ImageDataGenerator(
         featurewise_center=False,  # set input mean to 0 over the dataset
         samplewise_center=False,  # set each sample mean to 0
@@ -476,13 +476,13 @@ with tf.Session() as session:
         rotation_range=1e-6,  # randomly rotate images in the range (degrees, 0 to 180)
         width_shift_range=0.1,  # randomly shift images horizontally (fraction of total width)
         height_shift_range=0.1,  # randomly shift images vertically (fraction of total height)
-        horizontal_flip=True,  
+        horizontal_flip=True,
         vertical_flip=False,
         data_format="channels_first" )
 
     _data,_labels = next(gen)
     datagen.fit(_data.reshape(-1, 3, 32, 32))
-    
+
     dev_disc_acgan = -np.log(0.1)
     for iteration in range(ITERS):
         start_time = time.time()
@@ -534,8 +534,8 @@ with tf.Session() as session:
 
             generate_image(iteration, _data)
 
-        if (iteration < 20) or (iteration % 100 == 0):
-        #if iteration % 1000 == 999:
+        # if iteration % 1000 == 999:
+        if (iteration < 20) or (iteration % 1000 == 0):
             lib.plot.flush()
 
         lib.plot.tick()
