@@ -202,7 +202,6 @@ train_gen, dev_gen, test_gen = lib.mnist.load(BATCH_SIZE, BATCH_SIZE)
 def inf_train_gen():
     while True:
         for images,targets in train_gen():
-            print('images shape', images.shape)
             yield images
 
 # Train loop

@@ -36,4 +36,7 @@ def save_images(X, save_path):
         i = n % nw
         img[j*h:j*h+h, i*w:i*w+w] = x
 
+    if len(img.shape) == 2:
+        img = img.reshape(img.shape[0], img.shape[1], 1)
+
     save_img(save_path, img)
