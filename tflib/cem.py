@@ -130,7 +130,7 @@ def cem_generator(data_type, batch_size, data_dir):
                     image = np.array(image, dtype=np.uint8)
                 except:
                     continue
-            image = compress_image(image, 10)
+            image = compress_image(image, 5)
 
             all_data.append(np.array(image).flatten(order='C'))
 
