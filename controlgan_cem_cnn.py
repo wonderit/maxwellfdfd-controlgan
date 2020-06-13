@@ -11,7 +11,7 @@ import tflib.ops.conv2d
 import tflib.ops.batchnorm
 import tflib.ops.layernorm
 import tflib.save_images
-import tflib.cifar10
+import tflib.cem
 import tflib.inception_score
 import tflib.plot
 
@@ -40,8 +40,8 @@ if N_GPUS not in [1,2]:
 BATCH_SIZE = 64 # Critic batch size
 GEN_BS_MULTIPLE = 2 # Generator batch size, as a multiple of BATCH_SIZE
 ITERS = 100000 # How many iterations to train for
-DIM_G = 128 # Generator dimensionality
-DIM_D = 128 # Critic dimensionality
+DIM_G = 10 # Generator dimensionality
+DIM_D = 10 # Critic dimensionality
 NORMALIZATION_G = True # Use batchnorm in generator?
 NORMALIZATION_D = False # Use batchnorm (or layernorm) in critic?
 NORMALIZATION_C = True # Use batchnorm (or layernorm) in classifier?
@@ -92,7 +92,7 @@ def Normalize(name, inputs,labels=None):
         labels = None
 
     if ('Discriminator' in name) and NORMALIZATION_D:
-        return lib.ops.layernorm.Layernorm(name,[1,2,3],inputs,labels=labels,n_labels=10)
+        return lib.ops.layernorm.Layernorm(name,[1,2,3],inputs,labels=labels,n_labels=24)
     elif ('Classifier' in name) and NORMALIZATION_C:
         return lib.ops.layernorm.Layernorm(name,[1,2,3],inputs)
     elif ('Generator' in name) and NORMALIZATION_G:
@@ -161,7 +161,7 @@ def OptimizedResBlockDisc1(inputs):
     conv_1        = functools.partial(lib.ops.conv2d.Conv2D, input_dim=1, output_dim=DIM_D)
     conv_2        = functools.partial(ConvMeanPool, input_dim=DIM_D, output_dim=DIM_D)
     conv_shortcut = MeanPoolConv
-    shortcut = conv_shortcut('Discriminator.1.Shortcut', input_dim=3, output_dim=DIM_D, filter_size=1, he_init=False, biases=True, inputs=inputs)
+    shortcut = conv_shortcut('Discriminator.1.Shortcut', input_dim=1, output_dim=DIM_D, filter_size=1, he_init=False, biases=True, inputs=inputs)
 
     output = inputs
     output = conv_1('Discriminator.1.Conv1', filter_size=3, inputs=output)    
@@ -173,7 +173,7 @@ def OptimizedResBlockClass1(inputs):
     conv_1        = functools.partial(lib.ops.conv2d.Conv2D, input_dim=1, output_dim=32)
     conv_2        = functools.partial(lib.ops.conv2d.Conv2D, input_dim=32, output_dim=32)
     conv_shortcut = lib.ops.conv2d.Conv2D
-    shortcut = conv_shortcut('Classifier.1.Shortcut', input_dim=3, output_dim=32, filter_size=1, he_init=False, biases=True, inputs=inputs)
+    shortcut = conv_shortcut('Classifier.1.Shortcut', input_dim=1, output_dim=32, filter_size=1, he_init=False, biases=True, inputs=inputs)
 
     output = inputs
     output = conv_1('Classifier.1.Conv1', filter_size=3, inputs=output)    
@@ -184,29 +184,18 @@ def OptimizedResBlockClass1(inputs):
 def Generator(n_samples, labels, noise=None):
     if noise is None:
         noise = tf.random_normal([n_samples, 128])
-    output = lib.ops.linear.Linear('Generator.Input', 128, 4*4*DIM_G, noise)
-    output = tf.reshape(output, [-1, DIM_G, 4, 4])
+    output = lib.ops.linear.Linear('Generator.Input', 128, 5*10*DIM_G, noise)
+    output = tf.reshape(output, [-1, DIM_G, 5, 10])
     output = ResidualBlock('Generator.1', DIM_G, DIM_G, 3, output, resample='up', labels=labels)
-    output = ResidualBlock('Generator.2', DIM_G, DIM_G, 3, output, resample='up', labels=labels)
-    output = ResidualBlock('Generator.3', DIM_G, DIM_G, 3, output, resample='up', labels=labels)
     output = Normalize('Generator.OutputN', output)
     output = nonlinearity(output)
-    output = lib.ops.conv2d.Conv2D('Generator.Output', DIM_G, 3, 3, output, he_init=False)
+    output = lib.ops.conv2d.Conv2D('Generator.Output', DIM_G, 1, 3, output, he_init=False)
     output = tf.tanh(output)
     return tf.reshape(output, [-1, OUTPUT_DIM])
 
 def Discriminator(inputs, labels, kp=0.5):
     output = tf.reshape(inputs, [-1, 1, 10, 20])
     output = OptimizedResBlockDisc1(output)
-    output = ResidualBlock('Discriminator.2', DIM_D, DIM_D, 3, output, resample='down', labels=labels)
-    if CT_REG and kp!=1.0:
-        output = tf.nn.dropout(output, 0.8)
-    output = ResidualBlock('Discriminator.3', DIM_D, DIM_D, 3, output, resample=None, labels=labels)
-    if CT_REG:
-        output = tf.nn.dropout(output, kp)
-    output = ResidualBlock('Discriminator.4', DIM_D, DIM_D, 3, output, resample=None, labels=labels)
-    if CT_REG:
-        output = tf.nn.dropout(output, kp)
     output = nonlinearity(output)
     output = tf.reduce_mean(output, axis=[2,3])
     output_wgan = lib.ops.linear.Linear('Discriminator.Output', DIM_D, 1, output)
@@ -218,15 +207,9 @@ def Classifier(inputs, labels):
     output = OptimizedResBlockClass1(output)
     output = ResidualBlock('Classifier.2', 32, 32, 3, output, resample=None, labels=labels)
     output = ResidualBlock('Classifier.3', 32, 32, 3, output, resample=None, labels=labels)
-    output = ResidualBlock('Classifier.4', 32, 128, 3, output, resample='down', labels=labels)
-    output = ResidualBlock('Classifier.5', 128, 128, 3, output, resample=None, labels=labels)
-    output = ResidualBlock('Classifier.6', 128, 128, 3, output, resample=None, labels=labels)
-    output = ResidualBlock('Classifier.7', 128, 512, 3, output, resample='down', labels=labels)
-    output = ResidualBlock('Classifier.8', 512, 512, 3, output, resample=None, labels=labels)
-    output = ResidualBlock('Classifier.9', 512, 512, 3, output, resample=None, labels=labels)
     output = nonlinearity(output)
     output = tf.reduce_mean(output, axis=[2,3])
-    output_cgan = lib.ops.linear.Linear('Classifier.Output', 512, 10, output)
+    output_cgan = lib.ops.linear.Linear('Classifier.Output', 32, 24, output)
     return output_cgan
 
 with tf.Session() as session:
@@ -382,7 +365,7 @@ with tf.Session() as session:
     for device in DEVICES:
         with tf.device(device):
             n_samples = int(GEN_BS_MULTIPLE * BATCH_SIZE / len(DEVICES))
-            fake_labels = tf.cast(tf.random_uniform([n_samples])*10, tf.int32)
+            fake_labels = tf.cast(tf.random_uniform([n_samples])*24, tf.int32)
             if CONDITIONAL and ACGAN:
                 disc_fake = Discriminator(Generator(n_samples,fake_labels), fake_labels)
                 disc_fake_acgan = Classifier(Generator(n_samples,fake_labels), fake_labels)
@@ -414,16 +397,16 @@ with tf.Session() as session:
 
     # Function for generating samples
     frame_i = [0]
-    fixed_noise = tf.constant(np.random.normal(size=(100, 128)).astype('float32'))
-    fixed_labels = tf.constant(np.array([0,1,2,3,4,5,6,7,8,9]*10,dtype='int32'))
-    fixed_noise_samples = Generator(100, fixed_labels, noise=fixed_noise)
+    fixed_noise = tf.constant(np.random.normal(size=(120, 128)).astype('float32'))
+    fixed_labels = tf.constant(np.array([0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23]*5,dtype='int32'))
+    fixed_noise_samples = Generator(120, fixed_labels, noise=fixed_noise)
     def generate_image(frame, true_dist):
         samples = session.run(fixed_noise_samples)
         samples = ((samples+1.)*(255./2)).astype('int32')
         lib.save_images.save_images(samples.reshape((100, 1, 10, 20)), 'samples_{}.png'.format(frame))
 
     # Function for calculating inception score
-    fake_labels_100 = tf.cast(tf.random_uniform([100])*10, tf.int32)
+    fake_labels_100 = tf.cast(tf.random_uniform([100])*24, tf.int32)
     samples_100 = Generator(100, fake_labels_100)
     def get_inception_score(n):
         all_samples = []
