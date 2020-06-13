@@ -63,54 +63,39 @@ def Generator(n_samples, noise=None):
     output = tf.nn.relu(output)
     output = tf.reshape(output, [-1, 4*DIM, 3, 5])
 
-    print('gen output 1', output.shape)
-
     output = lib.ops.deconv2d.Deconv2D('Generator.2', 4*DIM, 2*DIM, 5, output)
     if MODE == 'wgan':
         output = lib.ops.batchnorm.Batchnorm('Generator.BN2', [0,2,3], output)
     output = tf.nn.relu(output)
-    print('gen output 2', output.shape)
 
     output = output[:,:,:5,:10]
-
-    print('gen output 3', output.shape)
 
     output = lib.ops.deconv2d.Deconv2D('Generator.3', 2*DIM, DIM, 5, output)
     if MODE == 'wgan':
         output = lib.ops.batchnorm.Batchnorm('Generator.BN3', [0,2,3], output)
     output = tf.nn.relu(output)
 
-    print('gen output 4', output.shape)
-
     output = lib.ops.deconv2d.Deconv2D('Generator.5', DIM, 1, 5, output)
     output = tf.nn.sigmoid(output)
-
-    print('gen output 5', output.shape)
 
     return tf.reshape(output, [-1, OUTPUT_DIM])
 
 def Discriminator(inputs):
     output = tf.reshape(inputs, [-1, 1, 20, 40])
-    print('output shape0', output.shape)
     output = lib.ops.conv2d.Conv2D('Discriminator.1',1,DIM,5,output,stride=2)
     output = LeakyReLU(output)
-    print('output shape1', output.shape)
     output = lib.ops.conv2d.Conv2D('Discriminator.2', DIM, 2*DIM, 5, output, stride=2)
     if MODE == 'wgan':
         output = lib.ops.batchnorm.Batchnorm('Discriminator.BN2', [0,2,3], output)
     output = LeakyReLU(output)
-    print('output shape2', output.shape)
 
     output = lib.ops.conv2d.Conv2D('Discriminator.3', 2*DIM, 4*DIM, 5, output, stride=2)
     if MODE == 'wgan':
         output = lib.ops.batchnorm.Batchnorm('Discriminator.BN3', [0,2,3], output)
     output = LeakyReLU(output)
 
-    print('output shape3', output.shape)
-
     output = tf.reshape(output, [-1, 4*3*5*DIM])
     output = lib.ops.linear.Linear('Discriminator.Output', 4*3*5*DIM, 1, output)
-    print('output shape4', output.shape)
     return tf.reshape(output, [-1])
 
 real_data = tf.placeholder(tf.float32, shape=[BATCH_SIZE, OUTPUT_DIM])
@@ -206,7 +191,7 @@ fixed_noise_samples = Generator(128, noise=fixed_noise)
 def generate_image(frame, true_dist):
     samples = session.run(fixed_noise_samples)
     lib.save_images.save_images(
-        samples.reshape((128, 10, 20)),
+        samples.reshape((128, 20, 40)),
         'samples_{}.png'.format(frame)
     )
 
@@ -217,7 +202,6 @@ train_gen, dev_gen = lib.cem.load(BATCH_SIZE, DATA_DIR)
 def inf_train_gen():
     while True:
         for images,targets in train_gen():
-            print('images shape', images.shape)
             yield images
 
 # Train loop
