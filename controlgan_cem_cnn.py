@@ -403,7 +403,7 @@ with tf.Session() as session:
     def generate_image(frame, true_dist):
         samples = session.run(fixed_noise_samples)
         samples = ((samples+1.)*(255./2)).astype('int32')
-        lib.save_images.save_images(samples.reshape((100, 1, 10, 20)), 'samples_{}.png'.format(frame))
+        lib.save_images.save_images(samples.reshape((120, 1, 10, 20)), 'samples_{}.png'.format(frame))
 
     # Function for calculating inception score
     fake_labels_100 = tf.cast(tf.random_uniform([100])*24, tf.int32)
