@@ -41,8 +41,8 @@ if N_GPUS not in [1,2]:
 BATCH_SIZE = 64 # Critic batch size
 GEN_BS_MULTIPLE = 2 # Generator batch size, as a multiple of BATCH_SIZE
 ITERS = 100000 # How many iterations to train for
-DIM_G = 64 # Generator dimensionality
-DIM_D = 64 # Critic dimensionality
+DIM_G = 128 # Generator dimensionality
+DIM_D = 128 # Critic dimensionality
 NORMALIZATION_G = True # Use batchnorm in generator?
 NORMALIZATION_D = False # Use batchnorm (or layernorm) in critic?
 NORMALIZATION_C = True # Use batchnorm (or layernorm) in classifier?
@@ -223,12 +223,12 @@ def Classifier(inputs, labels):
     output = ResidualBlock('Classifier.4', 32, 128, 3, output, resample='down', labels=labels)
     output = ResidualBlock('Classifier.5', 128, 128, 3, output, resample=None, labels=labels)
     output = ResidualBlock('Classifier.6', 128, 128, 3, output, resample=None, labels=labels)
-    # output = ResidualBlock('Classifier.7', 128, 512, 3, output, resample='down', labels=labels)
-    # output = ResidualBlock('Classifier.8', 512, 512, 3, output, resample=None, labels=labels)
-    # output = ResidualBlock('Classifier.9', 512, 512, 3, output, resample=None, labels=labels)
+    output = ResidualBlock('Classifier.7', 128, 512, 3, output, resample='down', labels=labels)
+    output = ResidualBlock('Classifier.8', 512, 512, 3, output, resample=None, labels=labels)
+    output = ResidualBlock('Classifier.9', 512, 512, 3, output, resample=None, labels=labels)
     output = nonlinearity(output)
     output = tf.reduce_mean(output, axis=[2, 3])
-    output_cgan = lib.ops.linear.Linear('Classifier.Output', 128, 24, output)
+    output_cgan = lib.ops.linear.Linear('Classifier.Output', 512, 24, output)
 
     return output_cgan
 
