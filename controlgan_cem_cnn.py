@@ -27,10 +27,6 @@ from keras.preprocessing.image import ImageDataGenerator
 
 locale.setlocale(locale.LC_ALL, '')
 
-
-def LeakyReLU(x, alpha=0.2):
-    return tf.maximum(alpha*x, x)
-
 # Download CIFAR-10 (Python version) at
 # https://www.cs.toronto.edu/~kriz/cifar.html and fill in the path to the
 # extracted files here!
@@ -42,7 +38,7 @@ N_GPUS = 1
 if N_GPUS not in [1,2]:
     raise Exception('Only 1 or 2 GPUs supported!')
 
-BATCH_SIZE = 50 # Critic batch size
+BATCH_SIZE = 64 # Critic batch size
 GEN_BS_MULTIPLE = 2 # Generator batch size, as a multiple of BATCH_SIZE
 ITERS = 100000 # How many iterations to train for
 DIM_G = 64 # Generator dimensionality
@@ -56,7 +52,7 @@ OUTPUT_DIM = 800 # Number of pixels in data (10*20*1)
 LR = 2e-4 # Initial learning rate
 DECAY = True # Whether to decay LR over learning
 N_CRITIC = 1 # Critic steps per generator steps
-INCEPTION_FREQUENCY = 5000 # How frequently to calculate Inception score
+INCEPTION_FREQUENCY = 200000 # How frequently to calculate Inception score
 STOP_ACC_CLASS = 1.0
 
 CONDITIONAL = True # Whether to train a conditional or unconditional model
@@ -190,87 +186,50 @@ def OptimizedResBlockClass1(inputs):
 def Generator(n_samples, labels, noise=None):
     if noise is None:
         noise = tf.random_normal([n_samples, 128])
-
-    output = lib.ops.linear.Linear('Generator.Input', 128, 4*3*5*DIM_G, noise)
-    output = tf.nn.relu(output)
-    output = tf.reshape(output, [-1, 4*DIM_G, 3, 5])
-
-    print('gen output 1', output.shape)
-
-    output = lib.ops.deconv2d.Deconv2D('Generator.2', 4*DIM_G, 2*DIM_G, 5, output)
-    output = tf.nn.relu(output)
-    print('gen output 2', output.shape)
-
-    output = output[:,:,:5,:10]
-
-    print('gen output 3', output.shape)
-    output = lib.ops.deconv2d.Deconv2D('Generator.3', 2*DIM_G, DIM_G, 5, output)
-    output = tf.nn.relu(output)
-    print('gen output 4', output.shape)
-
-    output = lib.ops.deconv2d.Deconv2D('Generator.5', DIM_G, 1, 5, output)
-    output = tf.nn.sigmoid(output)
-
-    print('gen output 5', output.shape)
-
+    output = lib.ops.linear.Linear('Generator.Input', 128, 5 * 10 * DIM_G, noise)
+    output = tf.reshape(output, [-1, DIM_G, 5, 10])
+    output = ResidualBlock('Generator.1', DIM_G, DIM_G, 3, output, resample='up', labels=labels)
+    output = ResidualBlock('Generator.2', DIM_G, DIM_G, 3, output, resample='up', labels=labels)
+    output = Normalize('Generator.OutputN', output)
+    output = nonlinearity(output)
+    output = lib.ops.conv2d.Conv2D('Generator.Output', DIM_G, 1, 3, output, he_init=False)
+    output = tf.tanh(output)
     return tf.reshape(output, [-1, OUTPUT_DIM])
 
 def Discriminator(inputs, labels, kp=0.5):
     output = tf.reshape(inputs, [-1, 1, 20, 40])
-    print('output shape0', output.shape)
-    output = lib.ops.conv2d.Conv2D('Discriminator.1',1,DIM_D,5,output,stride=2)
-    output = LeakyReLU(output)
-    print('output shape1', output.shape)
-    output = lib.ops.conv2d.Conv2D('Discriminator.2', DIM_D, 2*DIM_D, 5, output, stride=2)
-    output = LeakyReLU(output)
-    print('output shape2', output.shape)
-    output = lib.ops.conv2d.Conv2D('Discriminator.3', 2*DIM_D, 4*DIM_D, 5, output, stride=2)
-    output = LeakyReLU(output)
-    print('output shape3', output.shape)
-    output = tf.reshape(output, [-1, 4*3*5*DIM_D])
-    output = lib.ops.linear.Linear('Discriminator.Output', 4*3*5*DIM_D, 1, output)
-    print('output shape4', output.shape)
-    return tf.reshape(output, [-1])
-#
-# def Generator(n_samples, labels, noise=None):
-#     if noise is None:
-#         noise = tf.random_normal([n_samples, 128])
-#     output = lib.ops.linear.Linear('Generator.Input', 128, 5*10*DIM_G, noise)
-#     output = tf.reshape(output, [-1, DIM_G, 5, 10])
-#     output = ResidualBlock('Generator.1', DIM_G, DIM_G, 3, output, resample='up', labels=labels)
-#     output = ResidualBlock('Generator.2', DIM_G, DIM_G, 3, output, resample='up', labels=labels)
-#     output = ResidualBlock('Generator.3', DIM_G, DIM_G, 3, output, resample='up', labels=labels)
-#     output = Normalize('Generator.OutputN', output)
-#     output = nonlinearity(output)
-#     output = lib.ops.conv2d.Conv2D('Generator.Output', DIM_G, 1, 3, output, he_init=False)
-#     output = tf.tanh(output)
-#     return tf.reshape(output, [-1, OUTPUT_DIM])
-#
-# def Discriminator(inputs, labels, kp=0.5):
-#     output = tf.reshape(inputs, [-1, 1, 10, 20])
-#     output = OptimizedResBlockDisc1(output)
-#     output = nonlinearity(output)
-#     output = tf.reduce_mean(output, axis=[2,3])
-#     output_wgan = lib.ops.linear.Linear('Discriminator.Output', DIM_D, 1, output)
-#     output_wgan = tf.reshape(output_wgan, [-1])
-#     return output_wgan
+    output = OptimizedResBlockDisc1(output)
+    output = ResidualBlock('Discriminator.2', DIM_D, DIM_D, 3, output, resample='down', labels=labels)
+    if CT_REG and kp!=1.0:
+        output = tf.nn.dropout(output, 0.8)
+    output = ResidualBlock('Discriminator.3', DIM_D, DIM_D, 3, output, resample=None, labels=labels)
+    if CT_REG:
+        output = tf.nn.dropout(output, kp)
+    output = ResidualBlock('Discriminator.4', DIM_D, DIM_D, 3, output, resample=None, labels=labels)
+    if CT_REG:
+        output = tf.nn.dropout(output, kp)
+    output = nonlinearity(output)
+    output = tf.reduce_mean(output, axis=[2, 3])
+    output_wgan = lib.ops.linear.Linear('Discriminator.Output', DIM_D, 1, output)
+    output_wgan = tf.reshape(output_wgan, [-1])
+    return output_wgan
+
 
 def Classifier(inputs, labels):
     output = tf.reshape(inputs, [-1, 1, 20, 40])
-    print('Classifier output shape0', output.shape)
-    output = lib.ops.conv2d.Conv2D('Classifier.1', 1, DIM_D, 5, output, stride=2)
-    output = LeakyReLU(output)
-    print('Classifier output shape1', output.shape)
-    output = lib.ops.conv2d.Conv2D('Classifier.2', DIM_D, 2 * DIM_D, 5, output, stride=2)
-    output = LeakyReLU(output)
-    print('Classifier output shape2', output.shape)
-    output = lib.ops.conv2d.Conv2D('Classifier.3', 2 * DIM_D, 4 * DIM_D, 5, output, stride=2)
-    output = LeakyReLU(output)
-    print('Classifieroutput shape3', output.shape)
-    output = tf.reshape(output, [-1, 4 * 3 * 5 * DIM_D])
-    print('Classifieroutput shape4', output.shape)
-    output_cgan = lib.ops.linear.Linear('Classifier.Output', 4 * 3 * 5 * DIM_D, 24, output)
-    print('Classifier output shape5', output_cgan.shape)
+    output = OptimizedResBlockClass1(output)
+    output = ResidualBlock('Classifier.2', 32, 32, 3, output, resample=None, labels=labels)
+    output = ResidualBlock('Classifier.3', 32, 32, 3, output, resample=None, labels=labels)
+    output = ResidualBlock('Classifier.4', 32, 128, 3, output, resample='down', labels=labels)
+    output = ResidualBlock('Classifier.5', 128, 128, 3, output, resample=None, labels=labels)
+    output = ResidualBlock('Classifier.6', 128, 128, 3, output, resample=None, labels=labels)
+    # output = ResidualBlock('Classifier.7', 128, 512, 3, output, resample='down', labels=labels)
+    # output = ResidualBlock('Classifier.8', 512, 512, 3, output, resample=None, labels=labels)
+    # output = ResidualBlock('Classifier.9', 512, 512, 3, output, resample=None, labels=labels)
+    output = nonlinearity(output)
+    output = tf.reduce_mean(output, axis=[2, 3])
+    output_cgan = lib.ops.linear.Linear('Classifier.Output', 128, 24, output)
+
     return output_cgan
 
 with tf.Session() as session:
