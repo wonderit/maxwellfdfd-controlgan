@@ -43,9 +43,10 @@ GEN_BS_MULTIPLE = 2 # Generator batch size, as a multiple of BATCH_SIZE
 ITERS = 100000 # How many iterations to train for
 DIM_G = 128 # Generator dimensionality
 DIM_D = 128 # Critic dimensionality
-NORMALIZATION_G = True # Use batchnorm in generator?
-NORMALIZATION_D = False # Use batchnorm (or layernorm) in critic?
-NORMALIZATION_C = True # Use batchnorm (or layernorm) in classifier?
+NORMALIZATION_G = False # Use batchnorm in generator?t
+NORMALIZATION_D = False # Use batchnorm (or layernorm) in critic? f
+NORMALIZATION_C = False # Use batchnorm (or layernorm) in classifier?t
+
 ORTHO_REG = False
 CT_REG = True
 OUTPUT_DIM = 800 # Number of pixels in data (10*20*1)
@@ -246,8 +247,9 @@ with tf.Session() as session:
         with tf.device(device):
             fake_data_splits.append(Generator(int(BATCH_SIZE/len(DEVICES)), labels_splits[i]))
 
-    all_real_data = tf.reshape(2*((tf.cast(all_real_data_int, tf.float32)/256.)-.5), [BATCH_SIZE, OUTPUT_DIM])
-    all_real_data += tf.random_uniform(shape=[BATCH_SIZE,OUTPUT_DIM],minval=0.,maxval=1./128) # dequantize
+    # all_real_data = tf.reshape(2*((tf.cast(all_real_data_int, tf.float32)/256.)-.5), [BATCH_SIZE, OUTPUT_DIM])
+    all_real_data = tf.reshape(tf.cast(all_real_data_int, tf.float32), [BATCH_SIZE, OUTPUT_DIM])
+    # all_real_data += tf.random_uniform(shape=[BATCH_SIZE,OUTPUT_DIM],minval=0.,maxval=1./128) # dequantize
     all_real_data_splits = tf.split(all_real_data, len(DEVICES), axis=0)
 
     DEVICES_B = DEVICES[:int(len(DEVICES)/2)]
