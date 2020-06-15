@@ -94,7 +94,7 @@ def compress_image(prev_image, n):
     return new_image
 
 
-def cem_generator(data_type, batch_size, data_dir):
+def cem_generator(data_type, batch_size, data_dir, is_regression=False):
     if data_type == 'train':
         DATAPATH = os.path.join(data_dir, 'train')
         DATASETS = DATASETS_TRAIN
@@ -143,7 +143,8 @@ def cem_generator(data_type, batch_size, data_dir):
 
     # calculate argmax
     all_labels_df = pd.DataFrame(all_labels)
-    all_labels_df = all_labels_df.apply(lambda x: np.argmax(x), axis=1)
+    if not is_regression:
+        all_labels_df = all_labels_df.apply(lambda x: np.argmax(x), axis=1)
 
     # Countplot
     # y_train_df_for_countplot = pd.DataFrame(all_labels_df)
@@ -195,10 +196,10 @@ def cifar_generator(filenames, batch_size, data_dir):
     return get_epoch
 
 
-def load(batch_size, data_dir):
+def load(batch_size, data_dir, is_regression=False):
     return (
-        cem_generator('train', batch_size, data_dir),
-        cem_generator('test', batch_size, data_dir)
+        cem_generator('train', batch_size, data_dir, is_regression),
+        cem_generator('test', batch_size, data_dir, is_regression)
     )
 
 
