@@ -141,6 +141,9 @@ def cem_generator(data_type, batch_size, data_dir, is_regression=False):
     # Calculate transmittance
     all_labels /= 2767.
 
+    # change 0 ~ 1 -> 0 ~ 255
+    all_data *= 255
+
     # calculate argmax
     all_labels_df = pd.DataFrame(all_labels)
     if not is_regression:
