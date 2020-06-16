@@ -51,7 +51,8 @@ NORMALIZATION_C = True # Use batchnorm (or layernorm) in classifier?t
 ORTHO_REG = False
 CT_REG = True
 OUTPUT_DIM = 800 # Number of pixels in data (10*20*1)
-NUM_LABELS = 24
+NUM_LABELS = 12
+NUM_SAMPLES_PER_LABEL = 24
 LR = 2e-4 # Initial learning rate
 DECAY = True # Whether to decay LR over learning
 N_CRITIC = 1 # Critic steps per generator steps
@@ -463,13 +464,13 @@ with tf.Session() as session:
 
     # Function for generating samples
     frame_i = [0]
-    fixed_noise = tf.constant(np.random.normal(size=(120, 128)).astype('float32'))
-    fixed_labels = tf.constant(np.array([0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23]*5,dtype='int32'))
-    fixed_noise_samples = Generator(120, fixed_labels, noise=fixed_noise)
+    fixed_noise = tf.constant(np.random.normal(size=(NUM_SAMPLES_PER_LABEL * NUM_LABELS, 128)).astype('float32'))
+    fixed_labels = tf.constant(np.array([0,1,2,3,4,5,6,7,8,9,10,11]*NUM_SAMPLES_PER_LABEL,dtype='int32'))
+    fixed_noise_samples = Generator(NUM_SAMPLES_PER_LABEL * NUM_LABELS, fixed_labels, noise=fixed_noise)
     def generate_image(frame, true_dist):
         samples = session.run(fixed_noise_samples)
         samples = ((samples+1.)*(255./2)).astype('int32')
-        lib.save_images.save_images(samples.reshape((120, 1, 20, 40)), 'samples_{}.png'.format(frame))
+        lib.save_images.save_images(samples.reshape((NUM_SAMPLES_PER_LABEL * NUM_LABELS, 1, 20, 40)), 'samples_{}.png'.format(frame))
 
     # Function for calculating inception score
     fake_labels_100 = tf.cast(tf.random_uniform([100])*NUM_LABELS, tf.int32)
