@@ -160,8 +160,12 @@ def cem_generator(data_type, batch_size, data_dir, is_regression=False):
     print('Data Loading... Train dataset Finished.')
     images = all_data
     labels = all_labels_df.values
-    # images = np.concatenate(all_data, axis=0)
-    # labels = np.concatenate(all_labels_df.values, axis=0)
+
+    # Just use 12 classes
+    filtered_index = labels > 11
+    images = images[filtered_index]
+    labels = labels[filtered_index]
+    labels = labels - 12
 
     def get_epoch():
         rng_state = np.random.get_state()
