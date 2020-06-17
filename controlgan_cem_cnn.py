@@ -3,7 +3,7 @@
 
 import os, sys
 sys.path.append(os.getcwd())
-
+from keras.models import model_from_json
 import tflib as lib
 import tflib.ops.linear
 import tflib.ops.cond_batchnorm
@@ -15,6 +15,8 @@ import tflib.save_images
 import tflib.cem
 import tflib.inception_score
 import tflib.plot
+from scipy import stats
+from sklearn import metrics
 from scipy import stats
 
 import numpy as np
@@ -56,7 +58,7 @@ NUM_SAMPLES_PER_LABEL = 24
 LR = 2e-4 # Initial learning rate
 DECAY = True # Whether to decay LR over learning
 N_CRITIC = 1 # Critic steps per generator steps
-INCEPTION_FREQUENCY = 200000 # How frequently to calculate Inception score
+INCEPTION_FREQUENCY = 20 # How frequently to calculate Inception score
 STOP_ACC_CLASS = 1.0
 
 CONDITIONAL = True # Whether to train a conditional or unconditional model
@@ -248,6 +250,20 @@ def r_squared(y_true, y_pred):
     # r2 = r ** 2
     return r2
 
+
+def get_prediction_model():
+    MODEL_JSON_PATH = 'models/cnn_small_rmse_128_300/rmse_rect_1.json'
+    MODEL_H5_PATH = 'models/cnn_small_rmse_128_300/rmse_rect_1.h5'
+
+    # load json and create model
+    json_file = open(MODEL_JSON_PATH, 'r')
+    loaded_model_json = json_file.read()
+    json_file.close()
+    loaded_model = model_from_json(loaded_model_json)
+
+    # load weights into new model
+    loaded_model.load_weights(MODEL_H5_PATH)
+    return loaded_model
 
 with tf.Session() as session:
 
@@ -466,15 +482,42 @@ with tf.Session() as session:
     frame_i = [0]
     fixed_noise = tf.constant(np.random.normal(size=(NUM_SAMPLES_PER_LABEL * NUM_LABELS, 128)).astype('float32'))
     fixed_labels = tf.constant(np.array([0,1,2,3,4,5,6,7,8,9,10,11]*NUM_SAMPLES_PER_LABEL,dtype='int32'))
+    if IS_REGRESSION:
+        from numpy import genfromtxt
+        test_label = genfromtxt('data/test_all.csv', delimiter=',')
+        fixed_labels = test_label[:, 1:]
+        fixed_labels = tf.constant(fixed_labels.astype('float32'))
     fixed_noise_samples = Generator(NUM_SAMPLES_PER_LABEL * NUM_LABELS, fixed_labels, noise=fixed_noise)
     def generate_image(frame, true_dist):
         samples = session.run(fixed_noise_samples)
         samples = ((samples+1.)*(255./2)).astype('int32')
         lib.save_images.save_images(samples.reshape((NUM_SAMPLES_PER_LABEL * NUM_LABELS, 1, 20, 40)), 'samples_{}.png'.format(frame))
 
-    # Function for calculating inception score
-    fake_labels_100 = tf.cast(tf.random_uniform([100])*NUM_LABELS, tf.int32)
-    samples_100 = Generator(100, fake_labels_100)
+    def get_cnn_score():
+        from numpy import genfromtxt
+        test_label = genfromtxt('data/test_all.csv', delimiter=',')
+        fixed_labels = test_label[:, 1:]
+        all_samples = []
+        # Function for calculating inception score
+        fake_labels_120 = tf.constant(fixed_labels.astype('float32'))
+        samples_120 = Generator(120, fake_labels_120)
+        all_samples.append(session.run(samples_120))
+        all_samples = np.concatenate(all_samples, axis=0)
+        all_samples = ((all_samples+1.)*(255.99/2)).astype('int32')
+        all_samples = all_samples // 255
+
+        prediction_model = get_prediction_model()
+        image_for_model = all_samples.reshape((-1, 1, 20, 40)).transpose(0,2,3,1)
+        pred = prediction_model.predict(image_for_model)
+
+        pred = pred[:, 12:]
+        mse_loss = metrics.mean_squared_error(fixed_labels, pred)
+        r = stats.pearsonr(fixed_labels, pred)[0]
+        r2 = r ** 2
+        return mse_loss, r2
+
+
+
     def get_inception_score(n):
         all_samples = []
         for i in range(n//100):
@@ -565,9 +608,9 @@ with tf.Session() as session:
         lib.plot.plot('time', time.time() - start_time)
 
         if iteration % INCEPTION_FREQUENCY == INCEPTION_FREQUENCY-1:
-            inception_score = get_inception_score(50000)
-            lib.plot.plot('inception_50k', inception_score[0])
-            lib.plot.plot('inception_50k_std', inception_score[1])
+            inception_score = get_cnn_score()
+            lib.plot.plot('cnn_mse', inception_score[0])
+            lib.plot.plot('cnn_r2', inception_score[1])
 
         # Calculate dev loss and generate samples every 100 iters
         if iteration % 100 == 99:

@@ -162,10 +162,14 @@ def cem_generator(data_type, batch_size, data_dir, is_regression=False):
     labels = all_labels_df.values
 
     # Just use 12 classes
-    filtered_index = labels > 11
-    images = images[filtered_index]
-    labels = labels[filtered_index]
-    labels = labels - 12
+    if not is_regression:
+        filtered_index = labels > 11
+        images = images[filtered_index]
+        labels = labels[filtered_index]
+        labels = labels - 12
+    else:
+        labels = labels[:, 12:]
+        print(labels.shape)
 
     def get_epoch():
         rng_state = np.random.get_state()
@@ -227,22 +231,54 @@ def main():
     print(_data)
     print(_labels)
 
-def cem():
-    batch_size = 10
+def cem(n):
+    batch_size = 1
     data_dir = '../data'
-    train_gen = cem_generator('train',  batch_size, data_dir)
-    dev_gen = cem_generator('test', batch_size, data_dir)
+    # train_gen = cem_generator('train',  batch_size, data_dir)
+    test_gen = cem_generator('test', batch_size, data_dir, is_regression=True)
 
     def inf_train_gen():
         while True:
             for images, _labels in train_gen():
                 yield images, _labels
 
-    gen = inf_train_gen()
-    _data, _labels = next(gen)
-    print(_data, _data.shape)
-    print(_labels, _labels.shape)
+    def inf_test_gen():
+        while True:
+            for images, _labels in test_gen():
+                yield images, _labels
 
+
+    test_120 = dict()
+    # Initialize result dict
+    test_data = inf_test_gen()
+    n_array = []
+    while len(n_array) <= 10:
+        _data, _labels = next(test_data)
+        max_label = np.argmax(_labels)
+        # _labels_df = pd.DataFrame(_labels)
+        # _labels_df_max =  _labels_df.apply(lambda x: np.argmax(x), axis=1)
+        if max_label == n:
+            n_array.append(_labels[0])
+
+
+
+        test_120[str(n)] = n_array
+
+    print(test_120.values())
+    with open('test_n_{}.csv'.format(n), 'w') as f:
+        for key in test_120.keys():
+            for value in test_120[key]:
+                f.write("%s" % key)
+                for v in value:
+                    f.write(",%.6f" % v)
+                f.write("\n")
 
 if __name__ == "__main__":
-    cem()
+    cem(5)
+    cem(6)
+    cem(7)
+    cem(8)
+    cem(9)
+    cem(10)
+    cem(11)
+
