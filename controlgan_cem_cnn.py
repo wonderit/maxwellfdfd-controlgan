@@ -291,14 +291,15 @@ def get_prediction_model():
     return loaded_model
 
 
-with tf.Session() as session:
-    _iteration = tf.placeholder(tf.int32, shape=None)
-    gamma_input = tf.placeholder(tf.float32, shape=None)
-    all_real_data_int = tf.placeholder(tf.int32, shape=[BATCH_SIZE, OUTPUT_DIM])
+with tf.compat.v1.Session() as session:
+    K.set_session(session)
+    _iteration = tf.compat.v1.placeholder(tf.int32, shape=None)
+    gamma_input = tf.compat.v1.placeholder(tf.float32, shape=None)
+    all_real_data_int = tf.compat.v1.placeholder(tf.int32, shape=[BATCH_SIZE, OUTPUT_DIM])
     if IS_REGRESSION:
-        all_real_labels = tf.placeholder(tf.float32, shape=[BATCH_SIZE, NUM_LABELS])
+        all_real_labels = tf.compat.v1.placeholder(tf.float32, shape=[BATCH_SIZE, NUM_LABELS])
     else:
-        all_real_labels = tf.placeholder(tf.int32, shape=[BATCH_SIZE])
+        all_real_labels = tf.compat.v1.placeholder(tf.int32, shape=[BATCH_SIZE])
 
     labels_splits = tf.split(all_real_labels, len(DEVICES), axis=0)
 
@@ -309,7 +310,7 @@ with tf.Session() as session:
 
     all_real_data = tf.reshape(2 * ((tf.cast(all_real_data_int, tf.float32) / 256.) - .5), [BATCH_SIZE, OUTPUT_DIM])
     # all_real_data = tf.reshape(tf.cast(all_real_data_int, tf.float32), [BATCH_SIZE, OUTPUT_DIM])
-    all_real_data += tf.random_uniform(shape=[BATCH_SIZE, OUTPUT_DIM], minval=0., maxval=1. / 128)  # dequantize
+    all_real_data += tf.random.uniform(shape=[BATCH_SIZE, OUTPUT_DIM], minval=0., maxval=1. / 128)  # dequantize
     all_real_data_splits = tf.split(all_real_data, len(DEVICES), axis=0)
 
     DEVICES_B = DEVICES[:int(len(DEVICES) / 2)]
