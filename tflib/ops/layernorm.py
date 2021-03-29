@@ -4,7 +4,7 @@ import numpy as np
 import tensorflow as tf
 
 def Layernorm(name, norm_axes, inputs):
-    mean, var = tf.nn.moments(inputs, norm_axes, keep_dims=True)
+    mean, var = tf.compat.v1.nn.moments(inputs, norm_axes, keep_dims=True)
 
     # Assume the 'neurons' axis is the first of norm_axes. This is the case for fully-connected and BCHW conv layers.
     n_neurons = inputs.get_shape().as_list()[norm_axes[0]]
