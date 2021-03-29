@@ -382,7 +382,7 @@ with tf.compat.v1.Session() as session:
                     disc_acgan_accs.append(tf.reduce_mean(
                         tf.cast(
                             tf.equal(
-                                tf.compat.v1.to_int32(tf.argmax(disc_all_acgan[:int(BATCH_SIZE / len(DEVICES_A))], dimension=1)),
+                                tf.compat.v1.to_int32(tf.argmax(disc_all_acgan[:int(BATCH_SIZE / len(DEVICES_A))], axis=1)),
                                 real_and_fake_labels[:int(BATCH_SIZE / len(DEVICES_A))]
                             ),
                             tf.float32
@@ -391,7 +391,7 @@ with tf.compat.v1.Session() as session:
                     disc_acgan_fake_accs.append(tf.reduce_mean(
                         tf.cast(
                             tf.equal(
-                                tf.compat.v1.to_int32(tf.argmax(disc_all_acgan[int(BATCH_SIZE / len(DEVICES_A)):], dimension=1)),
+                                tf.compat.v1.to_int32(tf.argmax(disc_all_acgan[int(BATCH_SIZE / len(DEVICES_A)):], axis=1)),
                                 real_and_fake_labels[int(BATCH_SIZE / len(DEVICES_A)):]
                             ),
                             tf.float32
