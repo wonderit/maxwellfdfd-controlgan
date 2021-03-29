@@ -56,7 +56,7 @@ def spectral_norm(w, name, iteration=1):
 
     return w_norm
 
-def Conv2D(name, input_dim, output_dim, filter_size, inputs, he_init=True, mask_type=None, stride=1, weightnorm=None, biases=True, gain=1.):
+def Conv2D(name, input_dim, output_dim, filter_size, inputs, he_init=True, mask_type=None, stride=1, weightnorm=None, biases=True, gain=1., s_norm=False):
     """
     inputs: tensor of shape (batch size, num channels, height, width)
     mask_type: one of None, 'a', 'b'
@@ -80,8 +80,8 @@ def Conv2D(name, input_dim, output_dim, filter_size, inputs, he_init=True, mask_
             mask[center, center+1:, :, :] = 0.
 
             # Mask out future channels
-            for i in range(mask_n_channels):
-                for j in range(mask_n_channels):
+            for i in xrange(mask_n_channels):
+                for j in xrange(mask_n_channels):
                     if (mask_type=='a' and i >= j) or (mask_type=='b' and i > j):
                         mask[
                             center,
