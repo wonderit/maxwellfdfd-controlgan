@@ -249,19 +249,16 @@ def Discriminator(inputs, labels, kp=0.5):
 def Classifier(inputs, labels):
     output = tf.reshape(inputs, [-1, 1, 20, 40])
     output = OptimizedResBlockClass1(output)
-    output = ResidualBlock('Classifier.2', 32, 32, 3, output, resample=None, labels=labels)
-    output = ResidualBlock('Classifier.3', 32, 32, 3, output, resample=None, labels=labels)
-    output = ResidualBlock('Classifier.4', 32, 128, 3, output, resample='down', labels=labels)
-    output = ResidualBlock('Classifier.5', 128, 128, 3, output, resample=None, labels=labels)
-    output = ResidualBlock('Classifier.6', 128, 128, 3, output, resample=None, labels=labels)
-    output = ResidualBlock('Classifier.7', 128, 512, 3, output, resample='down', labels=labels)
-    output = ResidualBlock('Classifier.8', 512, 512, 3, output, resample=None, labels=labels)
-    output = ResidualBlock('Classifier.9', 512, 512, 3, output, resample=None, labels=labels)
+    output = ResidualBlock('Classifier.2', 32, 32, 3, output, resample='down', labels=labels)
+    output = ResidualBlock('Classifier.3', 32, 32, 3, output, resample='down', labels=labels)
+    output = ResidualBlock('Classifier.4', 32, 64, 3, output, resample='down', labels=labels)
+    output = ResidualBlock('Classifier.5', 64, 64, 3, output, resample=None, labels=labels)
+    output = ResidualBlock('Classifier.6', 64, 64, 3, output, resample=None, labels=labels)
     # TODO Add normalize
     output = Normalize('Classifier.OutputN', output)
     output = nonlinearity(output)
     output = tf.reduce_mean(output, axis=[2, 3])
-    output_cgan = lib.ops.linear.Linear('Classifier.Output', 512, NUM_LABELS, output)
+    output_cgan = lib.ops.linear.Linear('Classifier.Output', 64, NUM_LABELS, output)
     return output_cgan
 
 
