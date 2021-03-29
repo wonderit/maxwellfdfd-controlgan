@@ -49,20 +49,20 @@ GEN_BS_MULTIPLE = 2  # Generator batch size, as a multiple of BATCH_SIZE
 ITERS = 20000  # How many iterations to train for
 DIM_G = 128  # Generator dimensionality
 DIM_D = 128  # Critic dimensionality
-NORMALIZATION_G = True  # Use batchnorm in generator?t
-NORMALIZATION_D = False  # Use batchnorm (or layernorm) in critic? f
-NORMALIZATION_C = True  # Use batchnorm (or layernorm) in classifier?t
+NORMALIZATION_G = True  # Use batchnorm in generator? only t
+NORMALIZATION_D = False  # Use batchnorm (or layernorm) in critic? only f
+NORMALIZATION_C = True  # Use batchnorm (or layernorm) in classifier?t or f
 
 ORTHO_REG = False
 CT_REG = False
 SNORM = True
 OUTPUT_DIM = 800  # Number of pixels in data (10*20*1)
 NUM_LABELS = 12
-NUM_SAMPLES_PER_LABEL = 24
+NUM_SAMPLES_PER_LABEL = 10
 LR = 2e-4  # Initial learning rate
 DECAY = True  # Whether to decay LR over learning
 N_CRITIC = 1  # Critic steps per generator steps
-INCEPTION_FREQUENCY = 20  # How frequently to calculate Inception score
+INCEPTION_FREQUENCY = 500  # How frequently to calculate Inception score
 STOP_ACC_CLASS = 1.0
 
 CONDITIONAL = True  # Whether to train a conditional or unconditional model
@@ -95,8 +95,7 @@ def Ortho_reg(w):
     frob_norm = tf.reshape(frob_norm, [-1])
     return tf.reshape(tf.square(frob_norm), [])
 
-
-def Normalize(name, inputs, labels=None):
+def Normalize(name, inputs,labels=None):
     """This is messy, but basically it chooses between batchnorm, layernorm, 
     their conditional variants, or nothing, depending on the value of `name` and
     the global hyperparam flags."""
@@ -145,7 +144,6 @@ def UpsampleConv(name, input_dim, output_dim, filter_size, inputs, he_init=True,
     output = tf.transpose(output, [0, 3, 1, 2])
     output = lib.ops.conv2d.Conv2D(name, input_dim, output_dim, filter_size, output, he_init=he_init, biases=biases, s_norm=s_norm)
     return output
-
 
 def ResidualBlock(name, input_dim, output_dim, filter_size, inputs, resample=None, no_dropout=False, labels=None, s_norm=False):
     """
@@ -224,7 +222,6 @@ def Generator(n_samples, labels, noise=None):
     output = tf.tanh(output)
     return tf.reshape(output, [-1, OUTPUT_DIM])
 
-
 def Discriminator(inputs, labels, kp=0.5):
     output = tf.reshape(inputs, [-1, 1, 20, 40])
     output = OptimizedResBlockDisc1(output)
@@ -279,8 +276,8 @@ def r_squared(y_true, y_pred):
 
 
 def get_prediction_model():
-    MODEL_JSON_PATH = 'models/cnn_small_rmse_128_300/rmse_rect_1.json'
-    MODEL_H5_PATH = 'models/cnn_small_rmse_128_300/rmse_rect_1.h5'
+    MODEL_JSON_PATH = './models/cnn_small_rmse_128_300/rmse_rect_1.json'
+    MODEL_H5_PATH = './models/cnn_small_rmse_128_300/rmse_rect_1.h5'
 
     # load json and create model
     json_file = open(MODEL_JSON_PATH, 'r')
@@ -305,12 +302,13 @@ with tf.compat.v1.Session() as session:
 
     labels_splits = tf.split(all_real_labels, len(DEVICES), axis=0)
 
-    # b =
     fake_data_splits = []
     for i, device in enumerate(DEVICES):
         with tf.device(device):
-            label_int = tf.cast(labels_splits[i], tf.int32)
-            fake_data_splits.append(Generator(int(BATCH_SIZE / len(DEVICES)), label_int))
+            fake_data_splits.append(Generator(int(BATCH_SIZE/len(DEVICES)), labels_splits[i]))
+            # print('tensor type: ', labels_splits[i].dtype)
+            # label_int = tf.cast(labels_splits[i], tf.int32)
+            # fake_data_splits.append(Generator(int(BATCH_SIZE / len(DEVICES)), label_int))
 
     all_real_data = tf.reshape(2 * ((tf.cast(all_real_data_int, tf.float32) / 256.) - .5), [BATCH_SIZE, OUTPUT_DIM])
     # all_real_data = tf.reshape(tf.cast(all_real_data_int, tf.float32), [BATCH_SIZE, OUTPUT_DIM])
@@ -539,7 +537,7 @@ with tf.compat.v1.Session() as session:
     if IS_REGRESSION:
         from numpy import genfromtxt
 
-        test_label = genfromtxt('data/test_all.csv', delimiter=',')
+        test_label = genfromtxt('data/test_all_edit.csv', delimiter=',')
         fixed_labels = test_label[:, 1:]
         fixed_labels = tf.constant(fixed_labels.astype('float32'))
     fixed_noise_samples = Generator(NUM_SAMPLES_PER_LABEL * NUM_LABELS, fixed_labels, noise=fixed_noise)
@@ -554,7 +552,7 @@ with tf.compat.v1.Session() as session:
 
     def get_cnn_score():
         from numpy import genfromtxt
-        test_label = genfromtxt('data/test_all.csv', delimiter=',')
+        test_label = genfromtxt('data/test_all_edit.csv', delimiter=',')
         fixed_labels = test_label[:, 1:]
         all_samples = []
         # Function for calculating inception score
@@ -570,10 +568,12 @@ with tf.compat.v1.Session() as session:
         pred = prediction_model.predict(image_for_model)
 
         pred = pred[:, 12:]
+        pred = pred.flatten()
+        fixed_labels = fixed_labels.flatten()
         mse_loss = metrics.mean_squared_error(fixed_labels, pred)
         r = stats.pearsonr(fixed_labels, pred)[0]
         r2 = r ** 2
-        return mse_loss, r2
+        return (mse_loss, r2)
 
 
     def get_inception_score(n):
@@ -585,10 +585,7 @@ with tf.compat.v1.Session() as session:
         all_samples = all_samples.reshape((-1, 1, 20, 40)).transpose(0, 2, 3, 1)
         return lib.inception_score.get_inception_score(list(all_samples))
 
-
     train_gen, dev_gen = lib.cem.load(BATCH_SIZE, DATA_DIR, IS_REGRESSION)
-
-
     def inf_train_gen():
         while True:
             for images, _labels in train_gen():
@@ -684,20 +681,18 @@ with tf.compat.v1.Session() as session:
             lib.plot.plot('gamma', gamma_param)
         lib.plot.plot('time', time.time() - start_time)
 
-        if iteration % INCEPTION_FREQUENCY == INCEPTION_FREQUENCY - 1:
-            inception_score = get_cnn_score()
-            lib.plot.plot('cnn_mse', inception_score[0])
-            lib.plot.plot('cnn_r2', inception_score[1])
+        if iteration % INCEPTION_FREQUENCY == INCEPTION_FREQUENCY-1:
+            mse_score, r2_score = get_cnn_score()
+            lib.plot.plot('cnn_mse', mse_score)
+            lib.plot.plot('cnn_r2', r2_score)
 
         # Calculate dev loss and generate samples every 100 iters
-        if (iteration % 100 == 99) or iteration == 0:
+        if iteration % 100 == 99:
             dev_disc_costs = []
             dev_disc_acgan = []
             dev_disc_acgan_acc = []
-            for images, _labels in dev_gen():
-                _dev_disc_cost, _dev_disc_acgan, _dev_disc_acgan_acc = session.run(
-                    [disc_cost, disc_acgan, disc_acgan_acc],
-                    feed_dict={all_real_data_int: images, all_real_labels: _labels})
+            for images,_labels in dev_gen():
+                _dev_disc_cost, _dev_disc_acgan, _dev_disc_acgan_acc = session.run([disc_cost, disc_acgan, disc_acgan_acc], feed_dict={all_real_data_int: images,all_real_labels:_labels})
                 dev_disc_costs.append(_dev_disc_cost)
                 dev_disc_acgan.append(_dev_disc_acgan)
                 dev_disc_acgan_acc.append(_dev_disc_acgan_acc)
