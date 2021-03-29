@@ -9,19 +9,21 @@ import tflib as lib
 import tflib.ops.linear
 import tflib.ops.cond_batchnorm
 import tflib.ops.conv2d
-import tflib.ops.deconv2d
 import tflib.ops.batchnorm
 import tflib.ops.layernorm
 import tflib.save_images
 import tflib.cem
 import tflib.inception_score
 import tflib.plot
-from scipy import stats
+
 from sklearn import metrics
 from scipy import stats
 
 import numpy as np
 import tensorflow as tf
+import tensorflow.compat.v1.keras as keras
+from tensorflow.compat.v1.keras import backend as K
+from tensorflow.compat.v1.keras.layers import Layer
 
 import time
 import functools
