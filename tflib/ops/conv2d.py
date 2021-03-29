@@ -17,6 +17,45 @@ def unset_weights_stdev():
     global _weights_stdev
     _weights_stdev = None
 
+def l2_norm(v, eps=1e-12):
+    return v / (tf.reduce_sum(v ** 2) ** 0.5 + eps)
+
+def spectral_norm(w, name, iteration=1):
+    w_shape = w.shape.as_list()
+    w = tf.reshape(w, [-1, w_shape[-1]])
+
+    u = lib.param(name.replace('Discriminator.', 'D.').replace('Generator.', 'G.').replace('Classifier.', 'C.') + ".u",
+                  np.random.normal(size=(1, w_shape[-1])).astype('float32'), trainable=False)
+
+    u_hat = tf.identity(u)
+    v_hat = None
+    for i in range(iteration):
+        """
+        power iteration
+        Usually iteration = 1 will be enough
+        """
+        v_ = tf.matmul(u_hat, tf.transpose(w))
+        v_hat = l2_norm(v_)
+
+        u_ = tf.matmul(v_hat, w)
+        u_hat = l2_norm(u_)
+
+    u_final = tf.identity(u_hat)
+    v_final = tf.identity(v_hat)
+
+    u_final = tf.stop_gradient(u_final)
+    v_final = tf.stop_gradient(v_final)
+
+    sigma = tf.matmul(tf.matmul(v_final, w), tf.transpose(u_final))
+
+    assign_u = tf.compat.v1.assign(u, u_final)
+    with tf.control_dependencies([assign_u]):
+        sigma = tf.identity(sigma)
+        w_norm = tf.identity(w / sigma)
+        w_norm = tf.reshape(w_norm, w_shape)
+
+    return w_norm
+
 def Conv2D(name, input_dim, output_dim, filter_size, inputs, he_init=True, mask_type=None, stride=1, weightnorm=None, biases=True, gain=1.):
     """
     inputs: tensor of shape (batch size, num channels, height, width)
@@ -103,13 +142,22 @@ def Conv2D(name, input_dim, output_dim, filter_size, inputs, he_init=True, mask_
             with tf.name_scope('filter_mask'):
                 filters = filters * mask
 
-        result = tf.nn.conv2d(
-            input=inputs, 
-            filter=filters, 
-            strides=[1, 1, stride, stride],
-            padding='SAME',
-            data_format='NCHW'
-        )
+        if s_norm:
+            result = tf.nn.conv2d(
+                input=inputs,
+                filters=spectral_norm(filters, name),
+                strides=[1, 1, stride, stride],
+                padding='SAME',
+                data_format='NCHW'
+            )
+        else:
+            result = tf.nn.conv2d(
+                input=inputs,
+                filters=filters,
+                strides=[1, 1, stride, stride],
+                padding='SAME',
+                data_format='NCHW'
+            )
 
         if biases:
             _biases = lib.param(

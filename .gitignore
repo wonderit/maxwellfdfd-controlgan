@@ -10,3 +10,7 @@ __pycache__/
 
 # tmp files
 tmp/
+
+# scoregan
+scoregan.zip
+scoregan/
