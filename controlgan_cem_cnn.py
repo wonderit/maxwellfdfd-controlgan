@@ -308,7 +308,7 @@ with tf.compat.v1.Session() as session:
     fake_data_splits = []
     for i, device in enumerate(DEVICES):
         with tf.device(device):
-            fake_data_splits.append(Generator(int(BATCH_SIZE / len(DEVICES)), labels_splits[i]))
+            fake_data_splits.append(Generator(int(BATCH_SIZE / len(DEVICES)), int(labels_splits[i])))
 
     all_real_data = tf.reshape(2 * ((tf.cast(all_real_data_int, tf.float32) / 256.) - .5), [BATCH_SIZE, OUTPUT_DIM])
     # all_real_data = tf.reshape(tf.cast(all_real_data_int, tf.float32), [BATCH_SIZE, OUTPUT_DIM])
@@ -342,8 +342,11 @@ with tf.compat.v1.Session() as session:
             disc_real = disc_all[:int(BATCH_SIZE / len(DEVICES_A))]
             disc_fake = disc_all[int(BATCH_SIZE / len(DEVICES_A)):]
             # TODO Previous disc cost
+            # WGAN
             # disc_costs.append(tf.reduce_mean(disc_fake) - tf.reduce_mean(disc_real))
+
             # From scoregan
+            #  Hinge Loss
             disc_costs.append(-1. * tf.reduce_mean(tf.minimum(0., -1. + disc_real)) - 1. * tf.reduce_mean(
                 tf.minimum(0., -1. - 1. * disc_fake)))
             if CONDITIONAL and ACGAN:
@@ -662,8 +665,8 @@ with tf.compat.v1.Session() as session:
                 #     # _ = session.run([class_train_op], feed_dict={all_real_data_int: _data, all_real_labels:_labels, _iteration:iteration, gamma_input: gamma_param})
                 #
                 # TODO Param from scoregan
-                # gamma_param = min(2., max(0.0, gamma_param + 0.001 * (_disc_acgan_fake - 1.0 * _disc_acgan)))
-                gamma_param = min(0.1, max(0.0, gamma_param + 0.0001 * (_disc_acgan_fake - 1.0 * _disc_acgan)))
+                gamma_param = min(2., max(0.0, gamma_param + 0.001 * (_disc_acgan_fake - 1.0 * _disc_acgan)))
+                # gamma_param = min(0.1, max(0.0, gamma_param + 0.0001 * (_disc_acgan_fake - 1.0 * _disc_acgan)))
             else:
                 _disc_cost, _ = session.run([disc_cost, disc_train_op],
                                             feed_dict={all_real_data_int: _data, all_real_labels: _labels,
