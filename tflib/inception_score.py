@@ -15,11 +15,12 @@ import glob
 import scipy.misc
 import math
 import sys
+import tflib.fid as fid
 
 MODEL_DIR = './tmp/imagenet'
 DATA_URL = 'http://download.tensorflow.org/models/image/imagenet/inception-2015-12-05.tgz'
 softmax = None
-
+pool3 = None
 
 gpus = tf.config.experimental.list_physical_devices('GPU')
 if gpus:
@@ -45,29 +46,56 @@ def get_inception_score(images, splits=10):
   for img in images:
     img = img.astype(np.float32)
     inps.append(np.expand_dims(img, 0))
-  bs = 100
-  with tf.Session() as sess:
+  bs = 1
+  with tf.compat.v1.Session() as sess:
     preds = []
+    features = []
     n_batches = int(math.ceil(float(len(inps)) / float(bs)))
     for i in range(n_batches):
+
         # sys.stdout.write(".")
         # sys.stdout.flush()
         inp = inps[(i * bs):min((i + 1) * bs, len(inps))]
         inp = np.concatenate(inp, 0)
-        pred = sess.run(softmax, {'InputTensor:0': inp})
+        pred, feature = sess.run([softmax, pool3], {'ExpandDims:0': inp})
+        features.append(feature)
         preds.append(pred)
     preds = np.concatenate(preds, 0)
+    features = np.concatenate(features, 0)
     scores = []
+    '''
+    features = np.squeeze(np.array(features))
+    features_mean = np.mean(features, 0)
+    print(features_mean)
+    np.save('./cifar10_mean', features_mean)
+    features_norm = (features - np.expand_dims(features_mean, 0)).reshape((-1,2048))
+    features_cov = np.cov(np.transpose(features_norm))
+    np.save('./cifar10_cov', features_cov)
+    '''
+    features = np.squeeze(np.array(features))
+    features_mean_cifar10 = np.load('./cifar10_mean.npy').reshape((2048))
+    features_cov_cifar10 = np.squeeze(np.load('./cifar10_cov.npy'))
+    features_mean = np.mean(features, 0).reshape((2048))
+    diff = features_mean - features_mean_cifar10
+    features_norm = (features - np.expand_dims(features_mean, 0)).reshape((-1,2048))
+    features_cov = np.cov(np.transpose(features_norm))
+    '''
+    covmean, _ = linalg.sqrtm(features_cov.dot(features_cov_cifar10), disp=False)
+    term1 = diff.dot(np.transpose(diff)).reshape(1)
+    term2 = (np.trace(features_cov_cifar10) + np.trace(features_cov) - 2.0*np.trace(covmean)).reshape(1)
+    '''
+    _fid = fid.frechet_distance(features_mean_cifar10, features_cov_cifar10, features_mean, features_cov)
     for i in range(splits):
       part = preds[(i * preds.shape[0] // splits):((i + 1) * preds.shape[0] // splits), :]
       kl = part * (np.log(part) - np.log(np.expand_dims(np.mean(part, 0), 0)))
       kl = np.mean(np.sum(kl, 1))
       scores.append(np.exp(kl))
-    return np.mean(scores), np.std(scores)
+    return np.mean(scores), np.std(scores), _fid
 
 # This function is called automatically.
 def _init_inception():
   global softmax
+  global pool3
   if not os.path.exists(MODEL_DIR):
     os.makedirs(MODEL_DIR)
   filename = DATA_URL.split('/')[-1]
@@ -82,33 +110,28 @@ def _init_inception():
     statinfo = os.stat(filepath)
     print('Succesfully downloaded', filename, statinfo.st_size, 'bytes.')
   tarfile.open(filepath, 'r:gz').extractall(MODEL_DIR)
-  with tf.gfile.FastGFile(os.path.join(
+  with tf.io.gfile.GFile(os.path.join(
       MODEL_DIR, 'classify_image_graph_def.pb'), 'rb') as f:
-    graph_def = tf.GraphDef()
+    graph_def = tf.compat.v1.GraphDef()
     graph_def.ParseFromString(f.read())
-    # Import model with a modification in the input tensor to accept arbitrary
-    # batch size.
-    input_tensor = tf.placeholder(tf.float32, shape=[None, None, None, 3],
-                                  name='InputTensor')
-    _ = tf.import_graph_def(graph_def, name='',
-                            input_map={'ExpandDims:0': input_tensor})
+    _ = tf.graph_util.import_graph_def(graph_def, name='')
   # Works with an arbitrary minibatch size.
-  with tf.Session() as sess:
+  with tf.compat.v1.Session() as sess:
     pool3 = sess.graph.get_tensor_by_name('pool_3:0')
     ops = pool3.graph.get_operations()
     for op_idx, op in enumerate(ops):
         for o in op.outputs:
-            shape = o.get_shape()
-            shape = [s.value for s in shape]
+            shape = o.shape
+            #shape = [s.value for s in shape]
             new_shape = []
             for j, s in enumerate(shape):
                 if s == 1 and j == 0:
                     new_shape.append(None)
                 else:
                     new_shape.append(s)
-            o.set_shape(tf.TensorShape(new_shape))
+            o.set_shape(new_shape)
     w = sess.graph.get_operation_by_name("softmax/logits/MatMul").inputs[1]
-    logits = tf.matmul(tf.squeeze(pool3, [1, 2]), w)
+    logits = tf.matmul(tf.reshape(pool3, [1,pool3.shape[-1]]), w)
     softmax = tf.nn.softmax(logits)
 
 if softmax is None:
