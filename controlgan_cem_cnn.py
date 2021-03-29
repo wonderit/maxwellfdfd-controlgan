@@ -54,7 +54,7 @@ NORMALIZATION_D = False  # Use batchnorm (or layernorm) in critic? f
 NORMALIZATION_C = True  # Use batchnorm (or layernorm) in classifier?t
 
 ORTHO_REG = False
-CT_REG = True
+CT_REG = False
 SNORM = True
 OUTPUT_DIM = 800  # Number of pixels in data (10*20*1)
 NUM_LABELS = 12
