@@ -213,7 +213,7 @@ def OptimizedResBlockClass1(inputs):
 
 def Generator(n_samples, labels, noise=None):
     if noise is None:
-        noise = tf.random_normal([n_samples, 128])
+        noise = tf.random.normal([n_samples, 128])
     output = lib.ops.linear.Linear('Generator.Input', 128, 5 * 10 * DIM_G, noise, s_norm=SNORM)
     output = tf.reshape(output, [-1, DIM_G, 5, 10])
     output = ResidualBlock('Generator.1', DIM_G, DIM_G, 3, output, resample='up', labels=labels, s_norm=SNORM)
