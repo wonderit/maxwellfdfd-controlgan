@@ -305,10 +305,12 @@ with tf.compat.v1.Session() as session:
 
     labels_splits = tf.split(all_real_labels, len(DEVICES), axis=0)
 
+    # b =
     fake_data_splits = []
     for i, device in enumerate(DEVICES):
         with tf.device(device):
-            fake_data_splits.append(Generator(int(BATCH_SIZE / len(DEVICES)), int(labels_splits[i])))
+            label_int = tf.cast(labels_splits[i], tf.int32)
+            fake_data_splits.append(Generator(int(BATCH_SIZE / len(DEVICES)), label_int))
 
     all_real_data = tf.reshape(2 * ((tf.cast(all_real_data_int, tf.float32) / 256.) - .5), [BATCH_SIZE, OUTPUT_DIM])
     # all_real_data = tf.reshape(tf.cast(all_real_data_int, tf.float32), [BATCH_SIZE, OUTPUT_DIM])
