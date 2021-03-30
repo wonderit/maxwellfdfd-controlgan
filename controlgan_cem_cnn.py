@@ -46,7 +46,7 @@ if N_GPUS not in [1, 2]:
 
 BATCH_SIZE = 64  # Critic batch size
 GEN_BS_MULTIPLE = 2  # Generator batch size, as a multiple of BATCH_SIZE
-ITERS = 20000  # How many iterations to train for
+ITERS = 200000  # How many iterations to train for
 DIM_G = 128  # Generator dimensionality
 DIM_D = 128  # Critic dimensionality
 NORMALIZATION_G = True  # Use batchnorm in generator? only t
@@ -112,6 +112,8 @@ def Normalize(name, inputs,labels=None):
         return lib.ops.layernorm.Layernorm(name, [1, 2, 3], inputs)
     elif ('Generator' in name) and NORMALIZATION_G:
         if labels is not None:
+            # print('labels:', labels.dtype, labels)
+            # labels = tf.cast(labels, tf.int32)
             return lib.ops.cond_batchnorm.Batchnorm(name, [0, 2, 3], inputs, labels=labels, n_labels=NUM_LABELS)
         else:
             return lib.ops.batchnorm.Batchnorm(name, [0, 2, 3], inputs, fused=True)
@@ -251,7 +253,7 @@ def Classifier(inputs, labels):
     output = OptimizedResBlockClass1(output)
     output = ResidualBlock('Classifier.2', 32, 32, 3, output, resample='down', labels=labels)
     output = ResidualBlock('Classifier.3', 32, 32, 3, output, resample='down', labels=labels)
-    output = ResidualBlock('Classifier.4', 32, 64, 3, output, resample='down', labels=labels)
+    output = ResidualBlock('Classifier.4', 32, 64, 3, output, resample=None, labels=labels)
     output = ResidualBlock('Classifier.5', 64, 64, 3, output, resample=None, labels=labels)
     output = ResidualBlock('Classifier.6', 64, 64, 3, output, resample=None, labels=labels)
     # TODO Add normalize
@@ -368,7 +370,6 @@ with tf.compat.v1.Session() as session:
 
                     )
                 else:
-
                     disc_acgan_costs.append(tf.reduce_mean(
                         tf.nn.sparse_softmax_cross_entropy_with_logits(
                             logits=disc_all_acgan[:int(BATCH_SIZE / len(DEVICES_A))],
@@ -551,10 +552,13 @@ with tf.compat.v1.Session() as session:
         from numpy import genfromtxt
         test_label = genfromtxt('data/test_all_edit.csv', delimiter=',')
         fixed_labels = test_label[:, 1:]
+        fixed_argmax_labels = test_label[:, :1]
         all_samples = []
         # Function for calculating inception score
         fake_labels_120 = tf.constant(fixed_labels.astype('float32'))
-        samples_120 = Generator(120, fake_labels_120)
+        fake_argmax_labels_120 = tf.constant(fixed_argmax_labels.astype('int32'))
+        fake_argmax_labels_120 = tf.reshape(fake_argmax_labels_120, [-1])
+        samples_120 = Generator(120, fake_argmax_labels_120)
         all_samples.append(session.run(samples_120))
         all_samples = np.concatenate(all_samples, axis=0)
         all_samples = ((all_samples + 1.) * (255.99 / 2)).astype('int32')

@@ -14,3 +14,8 @@ tmp/
 # scoregan
 scoregan.zip
 scoregan/
+samples*.png
+*.jpg
+data/
+*log/
+*.pkl

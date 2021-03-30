@@ -179,7 +179,7 @@ def Linear(
                 result = tf.matmul(reshaped_inputs, spectral_norm(weight, name))
             else:
                 result = tf.matmul(inputs, weight)
-            result = tf.reshape(result, tf.pack(tf.unpack(tf.shape(inputs))[:-1] + [output_dim]))
+            result = tf.reshape(result, tf.stack(tf.unstack(tf.shape(inputs))[:-1] + [output_dim]))
 
         if biases:
             result = tf.nn.bias_add(
