@@ -231,10 +231,10 @@ def Classifier(inputs, labels):
 
 with tf.compat.v1.Session() as session:
 
-    _iteration = tf.placeholder(tf.int32, shape=None)
-    gamma_input = tf.placeholder(tf.float32, shape=None)
-    all_real_data_int = tf.placeholder(tf.int32, shape=[BATCH_SIZE, OUTPUT_DIM])
-    all_real_labels = tf.placeholder(tf.int32, shape=[BATCH_SIZE])
+    _iteration = tf.compat.v1.placeholder(tf.int32, shape=None)
+    gamma_input = tf.compat.v1.placeholder(tf.float32, shape=None)
+    all_real_data_int = tf.compat.v1.placeholder(tf.int32, shape=[BATCH_SIZE, OUTPUT_DIM])
+    all_real_labels = tf.compat.v1.placeholder(tf.int32, shape=[BATCH_SIZE])
 
     labels_splits = tf.split(all_real_labels, len(DEVICES), axis=0)
 
@@ -285,7 +285,7 @@ with tf.compat.v1.Session() as session:
                 disc_acgan_accs.append(tf.reduce_mean(
                     tf.cast(
                         tf.equal(
-                            tf.to_int32(tf.argmax(disc_all_acgan[:int(BATCH_SIZE/len(DEVICES_A))], dimension=1)),
+                            tf.compat.v1.to_int32(tf.argmax(disc_all_acgan[:int(BATCH_SIZE/len(DEVICES_A))], dimension=1)),
                             real_and_fake_labels[:int(BATCH_SIZE/len(DEVICES_A))]
                         ),
                         tf.float32
@@ -294,7 +294,7 @@ with tf.compat.v1.Session() as session:
                 disc_acgan_fake_accs.append(tf.reduce_mean(
                     tf.cast(
                         tf.equal(
-                            tf.to_int32(tf.argmax(disc_all_acgan[int(BATCH_SIZE/len(DEVICES_A)):], dimension=1)),
+                            tf.compat.v1.to_int32(tf.argmax(disc_all_acgan[int(BATCH_SIZE/len(DEVICES_A)):], dimension=1)),
                             real_and_fake_labels[int(BATCH_SIZE/len(DEVICES_A)):]
                         ),
                         tf.float32
