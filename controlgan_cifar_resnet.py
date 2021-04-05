@@ -183,7 +183,7 @@ def OptimizedResBlockClass1(inputs):
 
 def Generator(n_samples, labels, noise=None):
     if noise is None:
-        noise = tf.random_normal([n_samples, 128])
+        noise = tf.random.normal([n_samples, 128])
     output = lib.ops.linear.Linear('Generator.Input', 128, 4*4*DIM_G, noise)
     output = tf.reshape(output, [-1, DIM_G, 4, 4])
     output = ResidualBlock('Generator.1', DIM_G, DIM_G, 3, output, resample='up', labels=labels)
@@ -244,7 +244,7 @@ with tf.compat.v1.Session() as session:
             fake_data_splits.append(Generator(int(BATCH_SIZE/len(DEVICES)), labels_splits[i]))
 
     all_real_data = tf.reshape(2*((tf.cast(all_real_data_int, tf.float32)/256.)-.5), [BATCH_SIZE, OUTPUT_DIM])
-    all_real_data += tf.random_uniform(shape=[BATCH_SIZE,OUTPUT_DIM],minval=0.,maxval=1./128) # dequantize
+    all_real_data += tf.random.uniform(shape=[BATCH_SIZE,OUTPUT_DIM],minval=0.,maxval=1./128) # dequantize
     all_real_data_splits = tf.split(all_real_data, len(DEVICES), axis=0)
 
     DEVICES_B = DEVICES[:int(len(DEVICES)/2)]
@@ -310,7 +310,7 @@ with tf.compat.v1.Session() as session:
                 labels_splits[i],
                 labels_splits[len(DEVICES_A)+i],
             ], axis=0)
-            alpha = tf.random_uniform(
+            alpha = tf.random.uniform(
                 shape=[int(BATCH_SIZE/len(DEVICES_A)),1],
                 minval=0.,
                 maxval=1.
@@ -382,7 +382,7 @@ with tf.compat.v1.Session() as session:
     for device in DEVICES:
         with tf.device(device):
             n_samples = int(GEN_BS_MULTIPLE * BATCH_SIZE / len(DEVICES))
-            fake_labels = tf.cast(tf.random_uniform([n_samples])*10, tf.int32)
+            fake_labels = tf.cast(tf.random.uniform([n_samples])*10, tf.int32)
             if CONDITIONAL and ACGAN:
                 disc_fake = Discriminator(Generator(n_samples,fake_labels), fake_labels)
                 disc_fake_acgan = Classifier(Generator(n_samples,fake_labels), fake_labels)
@@ -423,7 +423,7 @@ with tf.compat.v1.Session() as session:
         lib.save_images.save_images(samples.reshape((100, 3, 32, 32)), 'samples_{}.png'.format(frame))
 
     # Function for calculating inception score
-    fake_labels_100 = tf.cast(tf.random_uniform([100])*10, tf.int32)
+    fake_labels_100 = tf.cast(tf.random.uniform([100])*10, tf.int32)
     samples_100 = Generator(100, fake_labels_100)
     def get_inception_score(n):
         all_samples = []
