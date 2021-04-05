@@ -254,13 +254,13 @@ def Classifier(inputs, labels):
     output = ResidualBlock('Classifier.2', 32, 32, 3, output, resample='down', labels=labels)
     # output = ResidualBlock('Classifier.3', 32, 32, 3, output, resample='down', labels=labels)
     # output = ResidualBlock('Classifier.4', 32, 64, 3, output, resample=None, labels=labels)
-    output = ResidualBlock('Classifier.5', 32, 64, 3, output, resample=None, labels=labels)
-    output = ResidualBlock('Classifier.6', 64, 64, 3, output, resample=None, labels=labels)
+    output = ResidualBlock('Classifier.5', 32, 32, 3, output, resample=None, labels=labels)
+    output = ResidualBlock('Classifier.6', 32, 32, 3, output, resample=None, labels=labels)
     # TODO Add normalize
     output = Normalize('Classifier.OutputN', output)
     output = nonlinearity(output)
     output = tf.reduce_mean(output, axis=[2, 3])
-    output_cgan = lib.ops.linear.Linear('Classifier.Output', 64, NUM_LABELS, output)
+    output_cgan = lib.ops.linear.Linear('Classifier.Output', 32, NUM_LABELS, output)
     return output_cgan
 
 
@@ -336,6 +336,7 @@ with tf.compat.v1.Session() as session:
                 labels_splits[i],
                 labels_splits[len(DEVICES_A) + i]
             ], axis=0)
+
             disc_all = Discriminator(real_and_fake_data, real_and_fake_labels)
             disc_all_acgan = Classifier(real_and_fake_data, real_and_fake_labels)
             disc_real = disc_all[:int(BATCH_SIZE / len(DEVICES_A))]
@@ -499,6 +500,7 @@ with tf.compat.v1.Session() as session:
         with tf.device(device):
             n_samples = int(GEN_BS_MULTIPLE * BATCH_SIZE / len(DEVICES))
             fake_labels = tf.cast(tf.random.uniform([n_samples]) * NUM_LABELS, tf.int32)
+            print('fake_labels', fake_labels)
             if CONDITIONAL and ACGAN:
                 disc_fake = Discriminator(Generator(n_samples, fake_labels), fake_labels)
                 disc_fake_acgan = Classifier(Generator(n_samples, fake_labels), fake_labels)
@@ -652,18 +654,18 @@ with tf.compat.v1.Session() as session:
                      disc_acgan_fake_acc],
                     feed_dict={all_real_data_int: _data, all_real_labels: _labels, _iteration: iteration,
                                gamma_input: gamma_param})
-                # if _disc_acgan_acc < STOP_ACC_CLASS:
-                #     for clsitr in range(1):
-                #         _data, _labels = next(gen)
-                #         _ = session.run([class_train_op], feed_dict={all_real_data_int:
-                #                                                          datagen.flow(_data.reshape(-1, 1, 20, 40),
-                #                                                                       batch_size=BATCH_SIZE,
-                #                                                                       shuffle=False)[0].reshape(
-                #                                                              BATCH_SIZE, OUTPUT_DIM),
-                #                                                      all_real_labels: _labels, _iteration: iteration,
-                #                                                      gamma_input: gamma_param})
-                #     # _ = session.run([class_train_op], feed_dict={all_real_data_int: _data, all_real_labels:_labels, _iteration:iteration, gamma_input: gamma_param})
-                #
+                if _disc_acgan_acc < STOP_ACC_CLASS:
+                    for clsitr in range(1):
+                        _data, _labels = next(gen)
+                        _ = session.run([class_train_op], feed_dict={all_real_data_int:
+                                                                         datagen.flow(_data.reshape(-1, 1, 20, 40),
+                                                                                      batch_size=BATCH_SIZE,
+                                                                                      shuffle=False)[0].reshape(
+                                                                             BATCH_SIZE, OUTPUT_DIM),
+                                                                     all_real_labels: _labels, _iteration: iteration,
+                                                                     gamma_input: gamma_param})
+                    # _ = session.run([class_train_op], feed_dict={all_real_data_int: _data, all_real_labels:_labels, _iteration:iteration, gamma_input: gamma_param})
+
                 # TODO Param from scoregan
                 gamma_param = min(2., max(0.0, gamma_param + 0.001 * (_disc_acgan_fake - 1.0 * _disc_acgan)))
                 # gamma_param = min(0.1, max(0.0, gamma_param + 0.0001 * (_disc_acgan_fake - 1.0 * _disc_acgan)))
@@ -704,7 +706,7 @@ with tf.compat.v1.Session() as session:
             generate_image(iteration, _data)
 
         # if iteration % 1000 == 999:
-        if (iteration < 20) or (iteration % 1000 == 0):
+        if (iteration < 20) or (iteration % 200 == 0):
             lib.plot.flush()
 
         lib.plot.tick()
