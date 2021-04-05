@@ -15,6 +15,7 @@ import tflib.save_images
 import tflib.cem
 import tflib.inception_score
 import tflib.plot
+from sklearn.metrics import r2_score
 
 from sklearn import metrics
 from scipy import stats
@@ -574,8 +575,10 @@ with tf.compat.v1.Session() as session:
         pred = pred.flatten()
         fixed_labels = fixed_labels.flatten()
         mse_loss = metrics.mean_squared_error(fixed_labels, pred)
-        r = stats.pearsonr(fixed_labels, pred)[0]
-        r2 = r ** 2
+
+        r2 = r2_score(y_true=fixed_labels, y_pred=pred, multioutput='uniform_average')
+        # r = stats.pearsonr(fixed_labels, pred)[0]
+        # r2 = r ** 2
         return (mse_loss, r2)
 
 
@@ -685,9 +688,9 @@ with tf.compat.v1.Session() as session:
         lib.plot.plot('time', time.time() - start_time)
 
         if iteration % INCEPTION_FREQUENCY == INCEPTION_FREQUENCY-1:
-            mse_score, r2_score = get_cnn_score()
+            mse_score, r2 = get_cnn_score()
             lib.plot.plot('cnn_mse', mse_score)
-            lib.plot.plot('cnn_r2', r2_score)
+            lib.plot.plot('cnn_r2', r2)
 
         # Calculate dev loss and generate samples every 100 iters
         if iteration % 100 == 99:
@@ -706,7 +709,7 @@ with tf.compat.v1.Session() as session:
             generate_image(iteration, _data)
 
         # if iteration % 1000 == 999:
-        if (iteration < 20) or (iteration % 200 == 0):
+        if (iteration < 20) or (iteration % 1000 == 0):
             lib.plot.flush()
 
         lib.plot.tick()
