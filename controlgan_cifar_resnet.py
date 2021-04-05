@@ -317,7 +317,8 @@ with tf.compat.v1.Session() as session:
             )
             differences = fake_data - real_data
             interpolates = real_data + (alpha*differences)
-            gradients = tf.gradients(Discriminator(interpolates, labels), [interpolates])
+            # gradients = tf.gradients(Discriminator(interpolates, labels), [interpolates])
+            gradients = tf.gradients(Discriminator(interpolates, labels), [interpolates])[0]
             if CT_REG:
                 CT_D1 = Discriminator(interpolates, labels)
                 CT_D2 = Discriminator(interpolates, labels)
