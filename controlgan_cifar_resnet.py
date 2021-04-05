@@ -37,7 +37,7 @@ N_GPUS = 1
 if N_GPUS not in [1,2]:
     raise Exception('Only 1 or 2 GPUs supported!')
 
-BATCH_SIZE = 64 # Critic batch size
+BATCH_SIZE = 32 # Critic batch size
 GEN_BS_MULTIPLE = 2 # Generator batch size, as a multiple of BATCH_SIZE
 ITERS = 100000 # How many iterations to train for
 DIM_G = 128 # Generator dimensionality
@@ -46,7 +46,7 @@ NORMALIZATION_G = True # Use batchnorm in generator?
 NORMALIZATION_D = False # Use batchnorm (or layernorm) in critic?
 NORMALIZATION_C = True # Use batchnorm (or layernorm) in classifier?
 ORTHO_REG = False
-CT_REG = True
+CT_REG = False
 OUTPUT_DIM = 3072 # Number of pixels in CIFAR10 (32*32*3)
 LR = 2e-4 # Initial learning rate
 DECAY = True # Whether to decay LR over learning
@@ -317,8 +317,7 @@ with tf.compat.v1.Session() as session:
             )
             differences = fake_data - real_data
             interpolates = real_data + (alpha*differences)
-            # gradients = tf.gradients(Discriminator(interpolates, labels), [interpolates])
-            gradients = tf.gradients(Discriminator(interpolates, labels), [interpolates])[0]
+            gradients = tf.gradients(Discriminator(interpolates, labels), [interpolates])
             if CT_REG:
                 CT_D1 = Discriminator(interpolates, labels)
                 CT_D2 = Discriminator(interpolates, labels)
