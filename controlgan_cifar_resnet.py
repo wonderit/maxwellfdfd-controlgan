@@ -229,7 +229,7 @@ def Classifier(inputs, labels):
     output_cgan = lib.ops.linear.Linear('Classifier.Output', 512, 10, output)
     return output_cgan
 
-with tf.Session() as session:
+with tf.compat.v1.Session() as session:
 
     _iteration = tf.placeholder(tf.int32, shape=None)
     gamma_input = tf.placeholder(tf.float32, shape=None)
