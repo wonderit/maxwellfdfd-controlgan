@@ -323,7 +323,7 @@ with tf.compat.v1.Session() as session:
                 CT_D2 = Discriminator(interpolates, labels)
                 CT_dist = tf.maximum(.0, tf.math.sqrt(tf.square(CT_D1-CT_D2)))
 
-            slopes = tf.math.sqrt(tf.reduce_sum(tf.square(gradients), reduction_indices=[1]))
+            slopes = tf.math.sqrt(tf.reduce_sum(tf.square(gradients), axis=[1]))
             if CT_REG:
                 gradient_penalty = 10*tf.reduce_mean((slopes-1.)**2) + 2*tf.reduce_mean(CT_dist)
             else:
