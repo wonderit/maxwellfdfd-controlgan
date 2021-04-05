@@ -461,7 +461,8 @@ with tf.compat.v1.Session() as session:
             locale.format("%d", total_param_count, grouping=True)
         ))
 
-    session.run(tf.initialize_all_variables())
+    # session.run(tf.initialize_all_variables())
+    session.run(tf.compat.v1.global_variables_initializer())
 
     gen = inf_train_gen()
 
