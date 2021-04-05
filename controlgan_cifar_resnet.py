@@ -397,9 +397,9 @@ with tf.compat.v1.Session() as session:
         gen_cost += (gamma_input*(tf.add_n(gen_acgan_costs) / len(DEVICES)))
 
 
-    gen_opt = tf.train.AdamOptimizer(learning_rate=LR*decay, beta1=0., beta2=0.9)
-    disc_opt = tf.train.AdamOptimizer(learning_rate=LR*decay*4, beta1=0., beta2=0.9)
-    class_opt = tf.train.AdamOptimizer(learning_rate=LR*decay2*5, beta1=0.9, beta2=0.999)
+    gen_opt = tf.compat.v1.train.AdamOptimizer(learning_rate=LR*decay, beta1=0., beta2=0.9)
+    disc_opt = tf.compat.v1.train.AdamOptimizer(learning_rate=LR*decay*4, beta1=0., beta2=0.9)
+    class_opt = tf.compat.v1.train.AdamOptimizer(learning_rate=LR*decay2*5, beta1=0.9, beta2=0.999)
     if ORTHO_REG:
         gen_gv = gen_opt.compute_gradients(gen_cost + 1e-5*ortho_reg_gen, var_list=lib.params_with_name('Generator'))
         disc_gv = disc_opt.compute_gradients(disc_cost + 1e-5*ortho_reg_disc, var_list=disc_params)
