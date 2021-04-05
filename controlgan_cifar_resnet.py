@@ -37,7 +37,7 @@ N_GPUS = 1
 if N_GPUS not in [1,2]:
     raise Exception('Only 1 or 2 GPUs supported!')
 
-BATCH_SIZE = 64 # Critic batch size
+BATCH_SIZE = 32 # Critic batch size
 GEN_BS_MULTIPLE = 2 # Generator batch size, as a multiple of BATCH_SIZE
 ITERS = 100000 # How many iterations to train for
 DIM_G = 128 # Generator dimensionality
@@ -46,7 +46,7 @@ NORMALIZATION_G = True # Use batchnorm in generator?
 NORMALIZATION_D = False # Use batchnorm (or layernorm) in critic?
 NORMALIZATION_C = True # Use batchnorm (or layernorm) in classifier?
 ORTHO_REG = False
-CT_REG = True
+CT_REG = False
 OUTPUT_DIM = 3072 # Number of pixels in CIFAR10 (32*32*3)
 LR = 2e-4 # Initial learning rate
 DECAY = True # Whether to decay LR over learning
@@ -323,7 +323,7 @@ with tf.compat.v1.Session() as session:
                 CT_D2 = Discriminator(interpolates, labels)
                 CT_dist = tf.maximum(.0, tf.math.sqrt(tf.square(CT_D1-CT_D2)))
 
-            slopes = tf.math.sqrt(tf.reduce_sum(tf.square(gradients), reduction_indices=[1]))
+            slopes = tf.math.sqrt(tf.reduce_sum(tf.square(gradients), axis=[1]))
             if CT_REG:
                 gradient_penalty = 10*tf.reduce_mean((slopes-1.)**2) + 2*tf.reduce_mean(CT_dist)
             else:
@@ -397,9 +397,9 @@ with tf.compat.v1.Session() as session:
         gen_cost += (gamma_input*(tf.add_n(gen_acgan_costs) / len(DEVICES)))
 
 
-    gen_opt = tf.train.AdamOptimizer(learning_rate=LR*decay, beta1=0., beta2=0.9)
-    disc_opt = tf.train.AdamOptimizer(learning_rate=LR*decay*4, beta1=0., beta2=0.9)
-    class_opt = tf.train.AdamOptimizer(learning_rate=LR*decay2*5, beta1=0.9, beta2=0.999)
+    gen_opt = tf.compat.v1.train.AdamOptimizer(learning_rate=LR*decay, beta1=0., beta2=0.9)
+    disc_opt = tf.compat.v1.train.AdamOptimizer(learning_rate=LR*decay*4, beta1=0., beta2=0.9)
+    class_opt = tf.compat.v1.train.AdamOptimizer(learning_rate=LR*decay2*5, beta1=0.9, beta2=0.999)
     if ORTHO_REG:
         gen_gv = gen_opt.compute_gradients(gen_cost + 1e-5*ortho_reg_gen, var_list=lib.params_with_name('Generator'))
         disc_gv = disc_opt.compute_gradients(disc_cost + 1e-5*ortho_reg_disc, var_list=disc_params)
@@ -461,7 +461,8 @@ with tf.compat.v1.Session() as session:
             locale.format("%d", total_param_count, grouping=True)
         ))
 
-    session.run(tf.initialize_all_variables())
+    # session.run(tf.initialize_all_variables())
+    session.run(tf.compat.v1.global_variables_initializer())
 
     gen = inf_train_gen()
 
