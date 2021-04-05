@@ -252,9 +252,9 @@ def Classifier(inputs, labels):
     output = tf.reshape(inputs, [-1, 1, 20, 40])
     output = OptimizedResBlockClass1(output)
     output = ResidualBlock('Classifier.2', 32, 32, 3, output, resample='down', labels=labels)
-    output = ResidualBlock('Classifier.3', 32, 32, 3, output, resample='down', labels=labels)
-    output = ResidualBlock('Classifier.4', 32, 64, 3, output, resample=None, labels=labels)
-    output = ResidualBlock('Classifier.5', 64, 64, 3, output, resample=None, labels=labels)
+    # output = ResidualBlock('Classifier.3', 32, 32, 3, output, resample='down', labels=labels)
+    # output = ResidualBlock('Classifier.4', 32, 64, 3, output, resample=None, labels=labels)
+    output = ResidualBlock('Classifier.5', 32, 64, 3, output, resample=None, labels=labels)
     output = ResidualBlock('Classifier.6', 64, 64, 3, output, resample=None, labels=labels)
     # TODO Add normalize
     output = Normalize('Classifier.OutputN', output)
@@ -629,7 +629,7 @@ with tf.compat.v1.Session() as session:
         rotation_range=0,  # randomly rotate images in the range (degrees, 0 to 180)
         width_shift_range=0,  # randomly shift images horizontally (fraction of total width)
         height_shift_range=0,  # randomly shift images vertically (fraction of total height)
-        horizontal_flip=True,
+        horizontal_flip=False,
         vertical_flip=False,
         data_format="channels_first")
 
