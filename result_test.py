@@ -28,6 +28,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
     file_name = 'samples_{}'.format(args.sample_number)
     result_folder = 'example_result/{}'.format(file_name)
+    result_png = 'example_result/{}.png'.format(file_name)
 
     if not os.path.exists(result_folder):
         os.makedirs(result_folder)
@@ -36,8 +37,9 @@ if __name__ == '__main__':
     data = np.array(img, dtype='uint8')
 
     # visually testing our output
-    # data[data>128] = 255
-    # data[data<=128] = 0
+    data[data>128] = 255
+    data[data<=128] = 0
+    plt.imsave(result_png, data, cmap='Greys')
     # plt.figure()
     # plt.imshow(data, cmap='Greys')
     # plt.show()
