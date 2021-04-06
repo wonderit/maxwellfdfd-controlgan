@@ -28,7 +28,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
     file_name = 'samples_{}'.format(args.sample_number)
     result_folder = 'example_result/{}'.format(file_name)
-    result_png = 'example_result/{}.png'.format(file_name)
+    result_png = 'example_result/new_{}.png'.format(file_name)
 
     if not os.path.exists(result_folder):
         os.makedirs(result_folder)
