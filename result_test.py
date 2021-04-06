@@ -37,8 +37,8 @@ if __name__ == '__main__':
     data = np.array(img, dtype='uint8')
 
     # visually testing our output
-    data[data>128] = 255
-    data[data<=128] = 0
+    data[data>254] = 255
+    data[data<=254] = 0
     plt.imsave(result_png, data, cmap='Greys')
     # plt.figure()
     # plt.imshow(data, cmap='Greys')
