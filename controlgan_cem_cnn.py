@@ -55,8 +55,9 @@ NORMALIZATION_D = False  # Use batchnorm (or layernorm) in critic? only f
 NORMALIZATION_C = True  # Use batchnorm (or layernorm) in classifier?t or f
 
 ORTHO_REG = False
-CT_REG = True # TODO False
+CT_REG = False # TODO False
 SNORM = True
+DROP_OUT_D = True
 OUTPUT_DIM = 800  # Number of pixels in data (10*20*1)
 NUM_LABELS = 12
 NUM_SAMPLES_PER_LABEL = 10
@@ -229,16 +230,16 @@ def Discriminator(inputs, labels, kp=0.5):
     output = tf.reshape(inputs, [-1, 1, 20, 40])
     output = OptimizedResBlockDisc1(output)
     output = ResidualBlock('Discriminator.2', DIM_D, DIM_D, 3, output, resample='down', labels=labels, s_norm=SNORM)
-    if CT_REG and kp != 0.0:
+    if (CT_REG and kp != 0.0) or DROP_OUT_D:
         output = tf.nn.dropout(output, 0.2)
     # TODO Check!!
     # if CT_REG and kp != 1.0:
     #     output = tf.nn.dropout(output, 0.8)
     output = ResidualBlock('Discriminator.3', DIM_D, DIM_D, 3, output, resample=None, labels=labels, s_norm=SNORM)
-    if CT_REG:
+    if CT_REG or DROP_OUT_D:
         output = tf.nn.dropout(output, kp)
     output = ResidualBlock('Discriminator.4', DIM_D, DIM_D, 3, output, resample=None, labels=labels, s_norm=SNORM)
-    if CT_REG:
+    if CT_REG or DROP_OUT_D:
         output = tf.nn.dropout(output, kp)
     output = nonlinearity(output)
     # TODO CHECK!!
