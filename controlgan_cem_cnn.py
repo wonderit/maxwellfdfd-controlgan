@@ -55,13 +55,13 @@ NORMALIZATION_D = False  # Use batchnorm (or layernorm) in critic? only f
 NORMALIZATION_C = True  # Use batchnorm (or layernorm) in classifier?t or f
 
 ORTHO_REG = False
-CT_REG = False
+CT_REG = True # TODO False
 SNORM = True
 OUTPUT_DIM = 800  # Number of pixels in data (10*20*1)
 NUM_LABELS = 12
 NUM_SAMPLES_PER_LABEL = 10
 LR = 2e-4  # Initial learning rate
-DECAY = True  # Whether to decay LR over learning
+DECAY = False  # Whether to decay LR over learning
 N_CRITIC = 1  # Critic steps per generator steps
 INCEPTION_FREQUENCY = 500  # How frequently to calculate Inception score
 STOP_ACC_CLASS = 1.0
@@ -492,8 +492,9 @@ with tf.compat.v1.Session() as session:
         decay2 = tf.maximum(0., 1. - (tf.cast(_iteration, tf.float32) / ITERS))
     else:
         decay = 1.
-        # decay2 = 1.
-        decay2 = tf.maximum(0., 1. - (tf.cast(_iteration, tf.float32) / ITERS))
+        # no decay
+        decay2 = 1.
+        # decay2 = tf.maximum(0., 1. - (tf.cast(_iteration, tf.float32) / ITERS))
 
     gen_costs = []
     gen_acgan_costs = []
