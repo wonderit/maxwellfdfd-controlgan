@@ -235,9 +235,9 @@ def Discriminator(inputs, labels, kp=0.5):
     # TODO Check!!
     # if CT_REG and kp != 1.0:
     #     output = tf.nn.dropout(output, 0.8)
-    output = ResidualBlock('Discriminator.3', DIM_D, DIM_D, 3, output, resample=None, labels=labels, s_norm=SNORM)
-    if CT_REG or DROP_OUT_D:
-        output = tf.nn.dropout(output, kp)
+    # output = ResidualBlock('Discriminator.3', DIM_D, DIM_D, 3, output, resample=None, labels=labels, s_norm=SNORM)
+    # if CT_REG:
+    #     output = tf.nn.dropout(output, kp)
     output = ResidualBlock('Discriminator.4', DIM_D, DIM_D, 3, output, resample=None, labels=labels, s_norm=SNORM)
     if CT_REG or DROP_OUT_D:
         output = tf.nn.dropout(output, kp)
@@ -416,13 +416,13 @@ with tf.compat.v1.Session() as session:
                 maxval=1.
             )
             # TODO Prev
-            # differences = fake_data - real_data
-            # interpolates = real_data + (alpha * differences)
-            # gradients = tf.gradients(Discriminator(interpolates, labels), [interpolates])
-            real_and_fake_concat = tf.concat([real_data, fake_data], 0)
-            real_and_fake_concat = real_and_fake_concat + tf.random.normal(real_and_fake_concat.get_shape().as_list(),
-                                                                           stddev=0.01)
-            gradients = tf.gradients(Discriminator(real_and_fake_concat, labels), [real_and_fake_concat])
+            differences = fake_data - real_data
+            interpolates = real_data + (alpha * differences)
+            gradients = tf.gradients(Discriminator(interpolates, labels), [interpolates])
+            # real_and_fake_concat = tf.concat([real_data, fake_data], 0)
+            # real_and_fake_concat = real_and_fake_concat + tf.random.normal(real_and_fake_concat.get_shape().as_list(),
+            #                                                                stddev=0.01)
+            # gradients = tf.gradients(Discriminator(real_and_fake_concat, labels), [real_and_fake_concat])
             if CT_REG:
                 CT_D1 = Discriminator(interpolates, labels)
                 CT_D2 = Discriminator(interpolates, labels)
@@ -430,12 +430,12 @@ with tf.compat.v1.Session() as session:
 
             slopes = tf.math.sqrt(tf.reduce_sum(tf.square(gradients), axis=[1]))
             if CT_REG:
-                # TODO DIFF
+                # TODO DIFF 1.0 -> 10
                 # gradient_penalty = 10 * tf.reduce_mean((slopes - 1.) ** 2) + 2 * tf.reduce_mean(CT_dist)
-                gradient_penalty = 1.0 * tf.reduce_mean((slopes) ** 2) + 2 * tf.reduce_mean(CT_dist)
+                gradient_penalty = 10 * tf.reduce_mean((slopes) ** 2) + 2 * tf.reduce_mean(CT_dist)
             else:
                 # gradient_penalty = 10 * tf.reduce_mean((slopes - 1.) ** 2)
-                gradient_penalty = 1.0 * tf.reduce_mean((slopes) ** 2)
+                gradient_penalty = 10 * tf.reduce_mean((slopes) ** 2)
             disc_costs.append(gradient_penalty)
 
     disc_wgan = tf.add_n(disc_costs) / len(DEVICES_A)
@@ -518,7 +518,7 @@ with tf.compat.v1.Session() as session:
         gen_cost += (gamma_input * (tf.add_n(gen_acgan_costs) / len(DEVICES)))
 
     gen_opt = tf.compat.v1.train.AdamOptimizer(learning_rate=LR * decay, beta1=0., beta2=0.9)
-    # from scoregan 4 -> 2
+    # from scoregan 4 -> 2 TODO : Lr 낮추기
     disc_opt = tf.compat.v1.train.AdamOptimizer(learning_rate=LR * decay * 2, beta1=0., beta2=0.9)
     class_opt = tf.compat.v1.train.AdamOptimizer(learning_rate=LR * decay2 * 5, beta1=0.9, beta2=0.999)
     if ORTHO_REG:
