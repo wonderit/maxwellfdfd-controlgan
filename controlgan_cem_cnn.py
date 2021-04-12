@@ -16,15 +16,11 @@ import tflib.cem
 import tflib.inception_score
 import tflib.plot
 from sklearn.metrics import r2_score
-
 from sklearn import metrics
-from scipy import stats
 
 import numpy as np
 import tensorflow as tf
-import tensorflow.compat.v1.keras as keras
 from tensorflow.compat.v1.keras import backend as K
-from tensorflow.compat.v1.keras.layers import Layer
 
 import time
 import functools
@@ -47,7 +43,7 @@ if N_GPUS not in [1, 2]:
 
 BATCH_SIZE = 64  # Critic batch size
 GEN_BS_MULTIPLE = 2  # Generator batch size, as a multiple of BATCH_SIZE
-ITERS = 200000  # How many iterations to train for
+ITERS = 100000  # How many iterations to train for
 DIM_G = 128  # Generator dimensionality
 DIM_D = 128  # Critic dimensionality
 NORMALIZATION_G = True  # Use batchnorm in generator? only t
@@ -55,7 +51,7 @@ NORMALIZATION_D = False  # Use batchnorm (or layernorm) in critic? only f
 NORMALIZATION_C = True  # Use batchnorm (or layernorm) in classifier?t or f
 
 ORTHO_REG = False
-CT_REG = False # TODO False
+CT_REG = False  # TODO False
 SNORM = True
 DROP_OUT_D = True
 OUTPUT_DIM = 800  # Number of pixels in data (10*20*1)
@@ -97,7 +93,8 @@ def Ortho_reg(w):
     frob_norm = tf.reshape(frob_norm, [-1])
     return tf.reshape(tf.square(frob_norm), [])
 
-def Normalize(name, inputs,labels=None):
+
+def Normalize(name, inputs, labels=None):
     """This is messy, but basically it chooses between batchnorm, layernorm, 
     their conditional variants, or nothing, depending on the value of `name` and
     the global hyperparam flags."""
@@ -146,10 +143,13 @@ def UpsampleConv(name, input_dim, output_dim, filter_size, inputs, he_init=True,
     output = tf.transpose(output, [0, 2, 3, 1])
     output = tf.nn.depth_to_space(output, 2)
     output = tf.transpose(output, [0, 3, 1, 2])
-    output = lib.ops.conv2d.Conv2D(name, input_dim, output_dim, filter_size, output, he_init=he_init, biases=biases, s_norm=s_norm)
+    output = lib.ops.conv2d.Conv2D(name, input_dim, output_dim, filter_size, output, he_init=he_init, biases=biases,
+                                   s_norm=s_norm)
     return output
 
-def ResidualBlock(name, input_dim, output_dim, filter_size, inputs, resample=None, no_dropout=False, labels=None, s_norm=False):
+
+def ResidualBlock(name, input_dim, output_dim, filter_size, inputs, resample=None, no_dropout=False, labels=None,
+                  s_norm=False):
     """
     resample: None, 'down', or 'up'
     """
@@ -225,6 +225,7 @@ def Generator(n_samples, labels, noise=None):
     output = lib.ops.conv2d.Conv2D('Generator.Output', DIM_G, 1, 3, output, he_init=False, s_norm=SNORM)
     output = tf.tanh(output)
     return tf.reshape(output, [-1, OUTPUT_DIM])
+
 
 def Discriminator(inputs, labels, kp=0.5):
     output = tf.reshape(inputs, [-1, 1, 20, 40])
@@ -306,7 +307,7 @@ with tf.compat.v1.Session() as session:
     fake_data_splits = []
     for i, device in enumerate(DEVICES):
         with tf.device(device):
-            fake_data_splits.append(Generator(int(BATCH_SIZE/len(DEVICES)), labels_splits[i]))
+            fake_data_splits.append(Generator(int(BATCH_SIZE / len(DEVICES)), labels_splits[i]))
             # print('tensor type: ', labels_splits[i].dtype)
             # label_int = tf.cast(labels_splits[i], tf.int32)
             # fake_data_splits.append(Generator(int(BATCH_SIZE / len(DEVICES)), label_int))
@@ -386,7 +387,8 @@ with tf.compat.v1.Session() as session:
                     disc_acgan_accs.append(tf.reduce_mean(
                         tf.cast(
                             tf.equal(
-                                tf.compat.v1.to_int32(tf.argmax(disc_all_acgan[:int(BATCH_SIZE / len(DEVICES_A))], axis=1)),
+                                tf.compat.v1.to_int32(
+                                    tf.argmax(disc_all_acgan[:int(BATCH_SIZE / len(DEVICES_A))], axis=1)),
                                 real_and_fake_labels[:int(BATCH_SIZE / len(DEVICES_A))]
                             ),
                             tf.float32
@@ -395,7 +397,8 @@ with tf.compat.v1.Session() as session:
                     disc_acgan_fake_accs.append(tf.reduce_mean(
                         tf.cast(
                             tf.equal(
-                                tf.compat.v1.to_int32(tf.argmax(disc_all_acgan[int(BATCH_SIZE / len(DEVICES_A)):], axis=1)),
+                                tf.compat.v1.to_int32(
+                                    tf.argmax(disc_all_acgan[int(BATCH_SIZE / len(DEVICES_A)):], axis=1)),
                                 real_and_fake_labels[int(BATCH_SIZE / len(DEVICES_A)):]
                             ),
                             tf.float32
@@ -455,7 +458,7 @@ with tf.compat.v1.Session() as session:
     disc_params = lib.params_with_name('Discriminator.')
     class_params = lib.params_with_name('Classifier.')
     gen_params = lib.params_with_name('Generator')
-    var_list = disc_params+class_params+gen_params
+    var_list = disc_params + class_params + gen_params
     if ORTHO_REG:
         ortho_reg_disc = 0.
         for param_disc in disc_params:
@@ -593,7 +596,10 @@ with tf.compat.v1.Session() as session:
         all_samples = all_samples.reshape((-1, 1, 20, 40)).transpose(0, 2, 3, 1)
         return lib.inception_score.get_inception_score(list(all_samples))
 
+
     train_gen, dev_gen = lib.cem.load(BATCH_SIZE, DATA_DIR, IS_REGRESSION)
+
+
     def inf_train_gen():
         while True:
             for images, _labels in train_gen():
@@ -663,12 +669,12 @@ with tf.compat.v1.Session() as session:
                     for clsitr in range(1):
                         _data, _labels = next(gen)
                         _ = session.run([class_train_op], feed_dict={all_real_data_int:
-                                                                         datagen.flow(_data.reshape(-1, 1, 20, 40),
-                                                                                      batch_size=BATCH_SIZE,
-                                                                                      shuffle=False)[0].reshape(
-                                                                             BATCH_SIZE, OUTPUT_DIM),
-                                                                     all_real_labels: _labels, _iteration: iteration,
-                                                                     gamma_input: gamma_param})
+                            datagen.flow(_data.reshape(-1, 1, 20, 40),
+                                         batch_size=BATCH_SIZE,
+                                         shuffle=False)[0].reshape(
+                                BATCH_SIZE, OUTPUT_DIM),
+                            all_real_labels: _labels, _iteration: iteration,
+                            gamma_input: gamma_param})
                     # _ = session.run([class_train_op], feed_dict={all_real_data_int: _data, all_real_labels:_labels, _iteration:iteration, gamma_input: gamma_param})
 
                 # TODO Param from scoregan
@@ -689,7 +695,7 @@ with tf.compat.v1.Session() as session:
             lib.plot.plot('gamma', gamma_param)
         lib.plot.plot('time', time.time() - start_time)
 
-        if iteration % INCEPTION_FREQUENCY == INCEPTION_FREQUENCY-1:
+        if iteration % INCEPTION_FREQUENCY == INCEPTION_FREQUENCY - 1:
             mse_score, r2 = get_cnn_score()
             lib.plot.plot('cnn_mse', mse_score)
             lib.plot.plot('cnn_r2', r2)
@@ -699,8 +705,10 @@ with tf.compat.v1.Session() as session:
             dev_disc_costs = []
             dev_disc_acgan = []
             dev_disc_acgan_acc = []
-            for images,_labels in dev_gen():
-                _dev_disc_cost, _dev_disc_acgan, _dev_disc_acgan_acc = session.run([disc_cost, disc_acgan, disc_acgan_acc], feed_dict={all_real_data_int: images,all_real_labels:_labels})
+            for images, _labels in dev_gen():
+                _dev_disc_cost, _dev_disc_acgan, _dev_disc_acgan_acc = session.run(
+                    [disc_cost, disc_acgan, disc_acgan_acc],
+                    feed_dict={all_real_data_int: images, all_real_labels: _labels})
                 dev_disc_costs.append(_dev_disc_cost)
                 dev_disc_acgan.append(_dev_disc_acgan)
                 dev_disc_acgan_acc.append(_dev_disc_acgan_acc)
