@@ -20,7 +20,7 @@ def get_prediction_model():
     loaded_model.load_weights(MODEL_H5_PATH)
     return loaded_model
 
-def get_accuracy(image_path, save_csv=False):
+def get_accuracy(image_path, save_csv=False, folder_path='.'):
     img = Image.open(image_path).convert('L')
     data = np.array(img, dtype='uint8')
     # visually testing our output
@@ -85,8 +85,8 @@ def get_accuracy(image_path, save_csv=False):
 
     print('percent_match : {0:.4f} \t top3 : {1:.4f} \t top5 : {2:.4f}'.format(percent_match, percent_top3, percent_top5))
     if save_csv:
-        result_folder = 'example_result/{}'.format(file_name)
-        result_png = 'example_result/{}/new_{}.png'.format(file_name, file_name)
+        result_folder = f'{folder_path}/example_result/{file_name}'
+        result_png = f'{folder_path}/example_result/{file_name}/new_{file_name}.png'
 
         if not os.path.exists(result_folder):
             os.makedirs(result_folder)
@@ -133,6 +133,8 @@ if __name__ == '__main__':
     parser.add_argument("-n", "--sample_number", help="Select sample_number", type=int, default=999)
 
     args = parser.parse_args()
+    folder_name = './logs/server-weak-disc'
+
     n_classes = 12
     n_count = 10
     img_width = 40
@@ -147,8 +149,8 @@ if __name__ == '__main__':
     top_accuracy_id = 0
     for image_number in range(99, args.sample_number, 100):
 
-        file_name = 'samples_{}'.format(image_number)
-        img_path = 'logs/server/{}.png'.format(file_name)
+        file_name = f'samples_{image_number}'
+        img_path = f'{folder_name}/{file_name}.png'
         top_acc_i, top3_acc_i, top5_acc_i = get_accuracy(img_path)
         if top_accuracy < top_acc_i:
             top_accuracy = top_acc_i
@@ -157,7 +159,7 @@ if __name__ == '__main__':
             top_accuracy_id = img_path
 
     print(f'Top Accuracy : {top_accuracy}, top3: {top3_accuracy}, top5: {top5_accuracy}, sample number:{top_accuracy_id}')
-    get_accuracy(top_accuracy_id, True)
+    get_accuracy(top_accuracy_id, True, folder_name)
 
 
 
