@@ -454,6 +454,7 @@ with tf.compat.v1.Session() as session:
         disc_acgan_acc = tf.constant(0.)
         disc_acgan_fake_acc = tf.constant(0.)
         disc_cost = disc_wgan
+        class_cost = tf.constant(0.)
 
     disc_params = lib.params_with_name('Discriminator.')
     class_params = lib.params_with_name('Classifier.')
