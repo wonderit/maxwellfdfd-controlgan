@@ -47,13 +47,13 @@ ITERS = 50000  # How many iterations to train for
 DIM_G = 128  # Generator dimensionality
 DIM_D = 128  # Critic dimensionality
 NORMALIZATION_G = True  # Use batchnorm in generator? only t
-NORMALIZATION_D = False  # Use batchnorm (or layernorm) in critic? only f
+NORMALIZATION_D = True  # Use batchnorm (or layernorm) in critic? only f
 NORMALIZATION_C = True  # Use batchnorm (or layernorm) in classifier?t or f
 
 ORTHO_REG = False
 CT_REG = False  # TODO False
 SNORM = True
-DROP_OUT_D = True
+DROP_OUT_D = False
 OUTPUT_DIM = 800  # Number of pixels in data (10*20*1)
 NUM_LABELS = 12
 NUM_SAMPLES_PER_LABEL = 10
