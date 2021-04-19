@@ -535,7 +535,8 @@ with tf.compat.v1.Session() as session:
         class_gv = class_opt.compute_gradients(class_cost, var_list=class_params)
     gen_train_op = gen_opt.apply_gradients(gen_gv)
     disc_train_op = disc_opt.apply_gradients(disc_gv)
-    class_train_op = class_opt.apply_gradients(class_gv)
+    if CONDITIONAL and ACGAN:
+        class_train_op = class_opt.apply_gradients(class_gv)
 
     # Function for generating samples
     frame_i = [0]
