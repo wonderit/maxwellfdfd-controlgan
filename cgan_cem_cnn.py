@@ -47,7 +47,7 @@ ITERS = 50000  # How many iterations to train for
 DIM_G = 128  # Generator dimensionality
 DIM_D = 128  # Critic dimensionality
 NORMALIZATION_G = True  # Use batchnorm in generator? only t
-NORMALIZATION_D = False  # Use batchnorm (or layernorm) in critic? only f
+NORMALIZATION_D = True  # Use batchnorm (or layernorm) in critic? only f, t for conditional gan?
 NORMALIZATION_C = False  # Use batchnorm (or layernorm) in classifier?t or f
 
 ORTHO_REG = False
