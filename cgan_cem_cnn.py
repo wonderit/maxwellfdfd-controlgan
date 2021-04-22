@@ -106,13 +106,16 @@ def Normalize(name, inputs, labels=None):
         labels = None
 
     if ('Discriminator' in name) and NORMALIZATION_D:
-        return lib.ops.layernorm.Layernorm(name, [1, 2, 3], inputs, labels=labels, n_labels=NUM_LABELS)
+
+        if labels is not None:
+            return lib.ops.cond_batchnorm.Batchnorm(name, [0, 2, 3], inputs, labels=labels, n_labels=NUM_LABELS)
+        else:
+            return lib.ops.batchnorm.Batchnorm(name, [0, 2, 3], inputs, fused=True)
+        # return lib.ops.layernorm.Layernorm(name, [1, 2, 3], inputs, labels=labels, n_labels=NUM_LABELS)
     elif ('Classifier' in name) and NORMALIZATION_C:
         return lib.ops.layernorm.Layernorm(name, [1, 2, 3], inputs)
     elif ('Generator' in name) and NORMALIZATION_G:
         if labels is not None:
-            # print('labels:', labels.dtype, labels)
-            # labels = tf.cast(labels, tf.int32)
             return lib.ops.cond_batchnorm.Batchnorm(name, [0, 2, 3], inputs, labels=labels, n_labels=NUM_LABELS)
         else:
             return lib.ops.batchnorm.Batchnorm(name, [0, 2, 3], inputs, fused=True)
