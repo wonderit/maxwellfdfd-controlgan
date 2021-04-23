@@ -19,3 +19,7 @@ samples*.png
 data/
 *log/
 *.pkl
+*.csv
+*.log
+*.png
+example*/
