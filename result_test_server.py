@@ -1,10 +1,11 @@
 from keras.models import model_from_json
-import numpy as np
 from PIL import Image
 import csv
 import matplotlib.pyplot as plt
 import argparse
 import os
+from sklearn.metrics import precision_score, recall_score, classification_report, confusion_matrix
+import numpy as np
 
 def get_prediction_model():
     MODEL_JSON_PATH = 'models/cnn_small_rmse_128_300/rmse_rect_1.json'
@@ -24,15 +25,17 @@ def get_prediction_model():
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("-n", "--sample_number", help="Select sample_number", default="29999")
+    parser.add_argument("-p", "--base_path", help="Select base path", default='logs/cgan')
 
     args = parser.parse_args()
     file_name = f'samples_{args.sample_number}'
-    result_folder = 'logs/cgan/{}'.format(file_name)
-    result_png = 'logs/cgan/{}/new_{}.png'.format(file_name, file_name)
+    base_path = args.base_path
+    result_folder = f'{base_path}/{file_name}'
+    result_png = f'{base_path}/{file_name}/new_{file_name}.png'
 
     if not os.path.exists(result_folder):
         os.makedirs(result_folder)
-    img_path = 'logs/cgan/{}.png'.format(file_name)
+    img_path = f'{base_path}/{file_name}.png'
     img = Image.open(img_path).convert('L')
     data = np.array(img, dtype='uint8')
 
@@ -82,8 +85,13 @@ if __name__ == '__main__':
 
     print('# of samples', data_reshaped.shape[0])
 
+    labels = []
+    predictions = []
+
     for i in range(data_reshaped.shape[0]):
         class_int = (i % n_classes)
+        predictions.append(class_int)
+
         wavelength = class_int * 50 + 1000
         single_image = data_reshaped[i] // 255
         single_image_for_model = single_image.reshape((1, img_height, img_width, 1))
@@ -91,6 +99,8 @@ if __name__ == '__main__':
 
         argsort_top5 = (-real).argsort()[:, :5][0] - 12
         argsort_top3 = (-real).argsort()[:, :3][0] - 12
+
+        labels.append(argsort_top3[0])
 
         if class_int in argsort_top5:
             result_top5[str(wavelength)] += 1
@@ -104,7 +114,7 @@ if __name__ == '__main__':
         if argsort_top3[0] > -1:
             result_truth[str(argsort_top3[0]* 50 + 1000)] += 1
 
-    print('match_cnt : {}, \t correct_cnt_top3 : {}, \t correct_cnt_top5 : {}'.format(sum(result_match.values()), sum(result_top3.values()), sum(result_top5.values())))
+    print(f'match_cnt : {sum(result_match.values())}, \t correct_cnt_top3 : {sum(result_top3.values())}, \t correct_cnt_top5 : {sum(result_top5.values())}')
 
     percent_match = sum(result_match.values()) / (n_classes * n_count)
     percent_top3 = sum(result_top3.values()) / (n_classes * n_count)
@@ -112,10 +122,10 @@ if __name__ == '__main__':
 
     print('percent_match : {0:.4f} \t top3 : {1:.4f} \t top5 : {2:.4f}'.format(percent_match, percent_top3, percent_top5))
 
-    csv_file_result_match = "{}/{}_result_match.csv".format(result_folder, file_name)
-    csv_file_result_top3 = "{}/{}_result_top3.csv".format(result_folder, file_name)
-    csv_file_result_top5 = "{}/{}_result_top5.csv".format(result_folder, file_name)
-    csv_file_result_truth = "{}/{}_result_truth.csv".format(result_folder, file_name)
+    csv_file_result_match = f'{result_folder}/{file_name}_result_match.csv'
+    csv_file_result_top3 = f'{result_folder}/{file_name}_result_top3.csv'
+    csv_file_result_top5 = f'{result_folder}/{file_name}_result_top5.csv'
+    csv_file_result_truth = f'{result_folder}/{file_name}_result_truth.csv'
 
     a_file = open(csv_file_result_match, "w")
 
@@ -152,5 +162,16 @@ if __name__ == '__main__':
 
     a_file.close()
 
+    cm = confusion_matrix(labels, predictions)
+
+    # Print the confusion matrix
+    print(cm)
+    # Print the precision and recall, among other metrics
+    print(classification_report(labels, predictions, digits=3))
+    recall = recall_score(labels, predictions, average='micro')
+    precision = precision_score(labels, predictions, average='micro')
+    fscore = 2 * recall * precision / (recall + precision)
+
+    print(f'recall : {recall:.3f}, precision: {precision:.3f}, f-score: {fscore:.3f}')
 
 
