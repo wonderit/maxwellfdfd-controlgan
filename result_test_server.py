@@ -100,7 +100,12 @@ if __name__ == '__main__':
         argsort_top5 = (-real).argsort()[:, :5][0] - 12
         argsort_top3 = (-real).argsort()[:, :3][0] - 12
 
-        labels.append(argsort_top3[0])
+        label = argsort_top3[0]
+
+        if label > -1:
+            labels.append(label)
+        else:
+            labels.append(-1)
 
         if class_int in argsort_top5:
             result_top5[str(wavelength)] += 1
