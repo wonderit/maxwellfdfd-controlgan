@@ -249,8 +249,12 @@ def Discriminator(inputs, labels, kp=0.5):
     # TODO CHECK!!
     # output = tf.reduce_mean(output, axis=[2, 3])
     output = tf.reduce_sum(output, axis=[2, 3])
+
+    one_hot_label = tf.one_hot(labels, NUM_LABELS)
+    output_label = lib.ops.linear.Linear('Discriminator.Output.Label', NUM_LABELS, DIM_D, one_hot_label, s_norm=SNORM, initialization=('uniform', 0.02))
+    output_label = tf.reduce_sum(tf.math.multiply(output_label, output), axis=[1])
     output_wgan = lib.ops.linear.Linear('Discriminator.Output', DIM_D, 1, output, s_norm=SNORM)
-    output_wgan = tf.reshape(output_wgan, [-1])
+    output_wgan = tf.reshape(output_wgan, [-1]) + tf.reshape(output_label, [-1])
     return output_wgan
 
 
