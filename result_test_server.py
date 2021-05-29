@@ -177,6 +177,6 @@ if __name__ == '__main__':
     precision = precision_score(labels, predictions, average='micro')
     fscore = 2 * recall * precision / (recall + precision)
 
-    print(f'recall : {recall:.3f}, precision: {precision:.3f}, f-score: {fscore:.3f}')
+    print(f'recall : {recall:.3f}, precision: {precision:.3f}, f-score: {fscore:.3f} \n acc:{percent_match:.3f}, top3:{percent_top3:.3f}, top5:{percent_top5:.3f}')
 
 
