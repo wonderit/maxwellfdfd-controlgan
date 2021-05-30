@@ -59,6 +59,13 @@ pip install -r requirements.txt
     ```shell script
     python evaluate.py 
     ```
+  
+
+* Sample image to percent match, truth csv
+
+    ```shell script
+    python result_box_plot.py -fn ./logs/wgan_new
+    ```
 
 ## To generate the data please visit the following GitHub URL : 
 https://github.com/wonderit/maxwellfdfd
