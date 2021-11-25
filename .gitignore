@@ -19,6 +19,7 @@ maxwellfdfd.zip
 figures/
 *samples*.png
 *.jpg
+data.zip
 data/
 *log/
 *.pkl
