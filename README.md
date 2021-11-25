@@ -2,11 +2,6 @@
 
 1. Download Data
 
-* download by command (mac)
-    ```shell script
-    ./download.sh 
-    ```
-
 * download by link
     >   download and unzip under folder named 'data'
     >
@@ -37,34 +32,32 @@ pip install -r requirements.txt
 # Run script 
 
 * Train
-    - default
+    - wgan
     ```shell script
-    python train.py 
+    python wgan.py 
     ```
  
-    - different model, loss function
+    - conditional gan (cgan)
     ```shell script
-    python train.py -m rf -l diff_rmse
+    python cgan.py
+    ```
+  
+    - controllable gan (controlgan)
+    ```shell script
+    python controlgan.py
     ```
 
 
 * Test
     ```shell script
-    python test.py 
-    python test_ensemble.py
-    ```
-
-* Evaluate single data
-
-    ```shell script
-    python evaluate.py 
+    python result_test.py 
     ```
   
 
 * Sample image to percent match, truth csv
 
     ```shell script
-    python result_box_plot.py -fn ./logs/wgan_new
+    python result_box_plot.py -fn ./logs/wgan
     ```
 
 ## To generate the data please visit the following GitHub URL : 
@@ -74,5 +67,7 @@ https://github.com/wonderit/maxwellfdfd
 https://github.com/BrainJellyPie/ControlGAN
 
 https://github.com/igul222/improved_wgan_training
+
+https://github.com/wonderit/maxwellfdfd-ai
 
 https://github.com/wonderit/ControlGAN

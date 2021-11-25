@@ -14,6 +14,9 @@ tmp/
 # scoregan
 scoregan.zip
 scoregan/
+maxwellfdfd/
+maxwellfdfd.zip
+figures/
 *samples*.png
 *.jpg
 data/
