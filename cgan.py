@@ -13,7 +13,6 @@ import tflib.ops.batchnorm
 import tflib.ops.layernorm
 import tflib.save_images
 import tflib.cem
-import tflib.inception_score
 import tflib.plot
 from sklearn.metrics import r2_score
 from sklearn import metrics
