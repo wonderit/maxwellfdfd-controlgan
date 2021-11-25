@@ -13,7 +13,6 @@ import tflib.ops.batchnorm
 import tflib.ops.layernorm
 import tflib.save_images
 import tflib.cem
-import tflib.inception_score
 import tflib.plot
 from sklearn.metrics import r2_score
 from sklearn import metrics
@@ -271,9 +270,6 @@ def r_squared(y_true, y_pred):
     residual = tf.reduce_sum(tf.square(tf.subtract(y_true, y_pred)))
     total = tf.reduce_sum(tf.square(tf.subtract(y_true, tf.reduce_mean(y_true))))
     r2 = tf.subtract(1.0, tf.div(residual, total))
-
-    # r = stats.spearmanr(y_true, y_pred)[0]
-    # r2 = r ** 2
     return r2
 
 
@@ -313,7 +309,6 @@ with tf.compat.v1.Session() as session:
             # fake_data_splits.append(Generator(int(BATCH_SIZE / len(DEVICES)), label_int))
 
     all_real_data = tf.reshape(2 * ((tf.cast(all_real_data_int, tf.float32) / 256.) - .5), [BATCH_SIZE, OUTPUT_DIM])
-    # all_real_data = tf.reshape(tf.cast(all_real_data_int, tf.float32), [BATCH_SIZE, OUTPUT_DIM])
     all_real_data += tf.random.uniform(shape=[BATCH_SIZE, OUTPUT_DIM], minval=0., maxval=1. / 128)  # dequantize
     all_real_data_splits = tf.split(all_real_data, len(DEVICES), axis=0)
 
@@ -628,7 +623,6 @@ with tf.compat.v1.Session() as session:
             locale.format("%d", total_param_count, grouping=True)
         ))
 
-    # session.run(tf.initialize_all_variables())
     session.run(tf.compat.v1.global_variables_initializer())
 
     gen = inf_train_gen()

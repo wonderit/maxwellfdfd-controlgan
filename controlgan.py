@@ -271,8 +271,6 @@ def r_squared(y_true, y_pred):
     total = tf.reduce_sum(tf.square(tf.subtract(y_true, tf.reduce_mean(y_true))))
     r2 = tf.subtract(1.0, tf.div(residual, total))
 
-    # r = stats.spearmanr(y_true, y_pred)[0]
-    # r2 = r ** 2
     return r2
 
 
@@ -581,8 +579,6 @@ with tf.compat.v1.Session() as session:
         mse_loss = metrics.mean_squared_error(fixed_labels, pred)
 
         r2 = r2_score(y_true=fixed_labels, y_pred=pred, multioutput='uniform_average')
-        # r = stats.pearsonr(fixed_labels, pred)[0]
-        # r2 = r ** 2
         return (mse_loss, r2)
 
 
