@@ -5,7 +5,7 @@
 * download by link
     >   download and unzip under folder named 'data'
     >
-    >   [data.zip](https://drive.google.com/uc?id=14-Bl89OzRtLM1MCW2H81Xvivq8EvTrmB)
+    >   [data.zip](https://drive.google.com/uc?id=1Gs9Per_unwdmlXufDxmYEgLAve0ep8Xx)
 
 # Conda Setting
 
