@@ -3,8 +3,6 @@ import pandas as pd
 import pickle
 import os
 from PIL import Image
-import matplotlib.pyplot as plt
-import seaborn as sns
 
 DATASETS_TRAIN = [
     'binary_501',
@@ -255,8 +253,6 @@ def cem(n):
     while len(n_array) <= 10:
         _data, _labels = next(test_data)
         max_label = np.argmax(_labels)
-        # _labels_df = pd.DataFrame(_labels)
-        # _labels_df_max =  _labels_df.apply(lambda x: np.argmax(x), axis=1)
         if max_label == n:
             n_array.append(_labels[0])
 

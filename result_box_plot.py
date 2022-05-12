@@ -2,7 +2,6 @@ from keras.models import model_from_json
 import numpy as np
 from PIL import Image
 import csv
-import matplotlib.pyplot as plt
 import argparse
 import os
 

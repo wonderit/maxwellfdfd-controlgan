@@ -4,8 +4,6 @@ Image grid saver, based on color_grid_vis from github.com/Newmu
 
 import numpy as np
 from keras.preprocessing.image import save_img
-# import scipy.misc
-# from scipy.misc import imsave
 
 def save_images(X, save_path):
     # [0, 1] -> [0,255]

@@ -7,6 +7,12 @@
     >
     >   [data.zip](https://drive.google.com/uc?id=1Gs9Per_unwdmlXufDxmYEgLAve0ep8Xx)
 
+* download by shell
+```shell
+wget https://drive.google.com/uc?id=1Gs9Per_unwdmlXufDxmYEgLAve0ep8Xx -O data.zip
+unzip -d data data.zip
+```
+
 # Conda Setting
 
 ```shell script
@@ -14,8 +20,8 @@ curl -O https://repo.anaconda.com/archive/Anaconda3-2019.10-Linux-x86_64.sh
 sha256sum Anaconda3-2019.10-Linux-x86_64.sh
 bash Anaconda3-2019.10-Linux-x86_64.sh
 
-conda create -n ControlGAN python=3.7
-conda activate ControlGAN
+conda create -n maxwellfdfd-controlgan python=3.10
+conda activate maxwellfdfd-controlgan
 pip install -r requirements.txt
 ```
 

@@ -305,12 +305,8 @@ with tf.compat.v1.Session() as session:
     for i, device in enumerate(DEVICES):
         with tf.device(device):
             fake_data_splits.append(Generator(int(BATCH_SIZE / len(DEVICES)), labels_splits[i]))
-            # print('tensor type: ', labels_splits[i].dtype)
-            # label_int = tf.cast(labels_splits[i], tf.int32)
-            # fake_data_splits.append(Generator(int(BATCH_SIZE / len(DEVICES)), label_int))
 
     all_real_data = tf.reshape(2 * ((tf.cast(all_real_data_int, tf.float32) / 256.) - .5), [BATCH_SIZE, OUTPUT_DIM])
-    # all_real_data = tf.reshape(tf.cast(all_real_data_int, tf.float32), [BATCH_SIZE, OUTPUT_DIM])
     all_real_data += tf.random.uniform(shape=[BATCH_SIZE, OUTPUT_DIM], minval=0., maxval=1. / 128)  # dequantize
     all_real_data_splits = tf.split(all_real_data, len(DEVICES), axis=0)
 
@@ -415,14 +411,9 @@ with tf.compat.v1.Session() as session:
                 minval=0.,
                 maxval=1.
             )
-            # TODO Prev
             differences = fake_data - real_data
             interpolates = real_data + (alpha * differences)
             gradients = tf.gradients(Discriminator(interpolates, labels), [interpolates])
-            # real_and_fake_concat = tf.concat([real_data, fake_data], 0)
-            # real_and_fake_concat = real_and_fake_concat + tf.random.normal(real_and_fake_concat.get_shape().as_list(),
-            #                                                                stddev=0.01)
-            # gradients = tf.gradients(Discriminator(real_and_fake_concat, labels), [real_and_fake_concat])
             if CT_REG:
                 CT_D1 = Discriminator(interpolates, labels)
                 CT_D2 = Discriminator(interpolates, labels)
@@ -642,7 +633,6 @@ with tf.compat.v1.Session() as session:
         data_format="channels_first")
 
     _data, _labels = next(gen)
-    # datagen.fit(_data.reshape(-1, 3, 32, 32))
     datagen.fit(_data.reshape(-1, 1, 20, 40))
 
     dev_disc_acgan = -np.log(0.1)
