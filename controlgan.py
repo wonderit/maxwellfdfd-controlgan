@@ -60,6 +60,7 @@ LR = 2e-4  # Initial learning rate
 DECAY = False  # Whether to decay LR over learning
 N_CRITIC = 1  # Critic steps per generator steps
 INCEPTION_FREQUENCY = 500  # How frequently to calculate Inception score
+LOG_FREQUENCY = 100  # How frequently to calculate log
 STOP_ACC_CLASS = 1.0
 
 CONDITIONAL = True  # Whether to train a conditional or unconditional model
@@ -69,6 +70,7 @@ ACGAN_SCALE_G = 1.0  # How to scale generator's ACGAN loss relative to WGAN loss
 INI_GAMMA = 0.0  # Initial gamma
 
 IS_REGRESSION = False
+CHECKPOINT_PATH = 'controlgan-model'
 
 if CONDITIONAL and (not ACGAN) and (not NORMALIZATION_D):
     print("WARNING! Conditional model without normalization in D might be effectively unconditional!")
@@ -288,6 +290,7 @@ def get_prediction_model():
     loaded_model.load_weights(MODEL_H5_PATH)
     return loaded_model
 
+saver = tf.compat.v1.train.Saver()
 
 with tf.compat.v1.Session() as session:
     K.set_session(session)
@@ -685,8 +688,8 @@ with tf.compat.v1.Session() as session:
             lib.plot.plot('cnn_mse', mse_score)
             lib.plot.plot('cnn_r2', r2)
 
-        # Calculate dev loss and generate samples every 100 iters
-        if iteration % 100 == 99:
+        # Calculate dev loss and generate samples every Log_frequency(100) iters
+        if iteration % INCEPTION_FREQUENCY == INCEPTION_FREQUENCY - 1:
             dev_disc_costs = []
             dev_disc_acgan = []
             dev_disc_acgan_acc = []
@@ -702,6 +705,10 @@ with tf.compat.v1.Session() as session:
             lib.plot.plot('dev_disc_acgan_acc', np.mean(dev_disc_acgan_acc))
 
             generate_image(iteration, _data)
+
+            # save parameters
+            saver.save(session, f'{CHECKPOINT_PATH}/controlgan-model', global_step=iteration)
+
 
         # if iteration % 1000 == 999:
         if (iteration < 20) or (iteration % 1000 == 0):
