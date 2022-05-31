@@ -290,7 +290,7 @@ def get_prediction_model():
     loaded_model.load_weights(MODEL_H5_PATH)
     return loaded_model
 
-saver = tf.compat.v1.train.Saver()
+saver = tf.compat.v1.train.Saver(tf.compat.v1.all_variables())
 
 with tf.compat.v1.Session() as session:
     K.set_session(session)

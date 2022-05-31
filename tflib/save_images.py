@@ -3,7 +3,8 @@ Image grid saver, based on color_grid_vis from github.com/Newmu
 """
 
 import numpy as np
-from keras.preprocessing.image import save_img
+# from keras.preprocessing.image import save_img
+import tensorflow as tf
 
 def save_images(X, save_path):
     # [0, 1] -> [0,255]
@@ -37,4 +38,4 @@ def save_images(X, save_path):
     if len(img.shape) == 2:
         img = img.reshape(img.shape[0], img.shape[1], 1)
 
-    save_img(save_path, img)
+    tf.keras.utils.save_img(save_path, img)
