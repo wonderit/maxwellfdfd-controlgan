@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 import torch.nn as nn
 import torch.nn.functional as F
 from torchvision.utils import save_image
-from tqdm.notebook import tqdm
+from tqdm import tqdm
 import torch.nn.functional as F
 
 os.environ['CUDA_LAUNCH_BLOCKING'] = "1"
