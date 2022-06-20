@@ -8,25 +8,26 @@ from torch.utils.data import DataLoader
 
 import torch
 import torch.utils.data
-from torchvision.utils import make_grid
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import torch.nn as nn
-import torch.nn.functional as F
 from torchvision.utils import save_image
 from tqdm import tqdm
 import torch.nn.functional as F
+from keras.models import model_from_json
+import csv
+import argparse
 
 os.environ['CUDA_LAUNCH_BLOCKING'] = "1"
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
 NUM_LABELS = 12
 NUM_SAMPLES_PER_LABEL = 10
-latent_size = 128
-lr = 0.0001
-epochs = 200
-clamp_num=0.01# WGAN clip gradient
-
-vid_fname = 'wgan_w_sim_loss_training.gif'
+latent_size = 116
+IMAGE_WIDTH = 40
+IMAGE_HEIGHT = 20
+clamp_num=0.01  # WGAN clip gradient
 
 def compress_image(prev_image, n):
     if n < 2:
@@ -40,7 +41,6 @@ def compress_image(prev_image, n):
             new_image[i, j] = prev_image[n * i, n * j]
 
     return new_image
-
 
 class CEMDataset(torch.utils.data.Dataset):
     DATASETS_TRAIN = [
@@ -165,27 +165,8 @@ class CEMDataset(torch.utils.data.Dataset):
     def __len__(self) -> int:
         return len(self.data)
 
-data_dir = os.path.join(os.getcwd(), 'maxwellfdfd')
-
-cem_train = CEMDataset(data_dir, train=True, scale=5, is_regression = True)
-
-batch_size = 128
-train_dl = DataLoader(cem_train, batch_size, shuffle=True, pin_memory=True)
-
 def denorm(img_tensors):
     return img_tensors * 1.
-
-def show_images(images, nmax=64):
-    fig, ax = plt.subplots(figsize=(8, 8))
-    ax.set_xticks([]); ax.set_yticks([])
-    s = make_grid(images.detach()[:nmax], nrow=8)
-    ax.imshow(make_grid(denorm(images.detach()[:nmax]), nrow=8, padding=5, pad_value=0.5).permute(1, 2, 0))
-
-def show_batch(dl, nmax=64):
-    for images, _ in dl:
-        show_images(images, nmax)
-        break
-
 
 def get_default_device():
     """Pick GPU if available, else CPU"""
@@ -194,13 +175,11 @@ def get_default_device():
     else:
         return torch.device('cpu')
 
-
 def to_device(data, device):
     """Move tensor(s) to chosen device"""
     if isinstance(data, (list, tuple)):
         return [to_device(x, device) for x in data]
     return data.to(device, non_blocking=False)
-
 
 class DeviceDataLoader():
     """Wrap a dataloader to move data to a device"""
@@ -218,8 +197,6 @@ class DeviceDataLoader():
         """Number of batches"""
         return len(self.dl)
 
-device = get_default_device()
-train_dl = DeviceDataLoader(train_dl, device)
 
 class CnnModel(nn.Module):
     def __init__(self):
@@ -248,54 +225,6 @@ class CnnModel(nn.Module):
     def forward(self, xb):
         return self.network(xb)
 
-simulator = CnnModel()
-simulator.load_state_dict(torch.load('cnn_model_ep50.pth'))
-simulator.eval()
-
-discriminator = nn.Sequential(
-    # in: 1 x 20 x 40
-
-    nn.Conv2d(1, 64, kernel_size=4, stride=2, padding=(0, 1), bias=False),
-    nn.LeakyReLU(0.2, inplace=True),
-
-    nn.Conv2d(64, 128, kernel_size=(3, 4), stride=2, padding=1, bias=False),
-    nn.BatchNorm2d(128),
-    nn.LeakyReLU(0.2, inplace=True),
-
-    nn.Conv2d(128, 256, kernel_size=(3, 4), stride=2, padding=1, bias=False),
-    nn.BatchNorm2d(256),
-    nn.LeakyReLU(0.2, inplace=True),
-
-    nn.Conv2d(256, 1, kernel_size=(3, 5), stride=1, padding=0, bias=False),
-    # out: 1 x 1 x 1
-
-    nn.Flatten(),
-    nn.Sigmoid()
-
-)
-print(discriminator)
-simulator = to_device(simulator, device)
-discriminator = to_device(discriminator, device)
-
-generator = nn.Sequential(
-    # in: latent_size x 1 x 1
-    nn.ConvTranspose2d(latent_size+NUM_LABELS, 256, kernel_size=(3,5), stride=1, padding=0, bias=False),
-    nn.BatchNorm2d(256),
-    nn.ReLU(True),
-
-    nn.ConvTranspose2d(256, 128, kernel_size=(3,4), stride=2, padding=1, bias=False),
-    nn.BatchNorm2d(128),
-    nn.ReLU(True),
-
-    nn.ConvTranspose2d(128, 64, kernel_size=(3,4), stride=2, padding=1, bias=False),
-    nn.BatchNorm2d(64),
-    nn.ReLU(True),
-
-    nn.ConvTranspose2d(64, 1, kernel_size=(4,4), stride=2, padding=(0, 1), bias=False),
-    nn.Tanh()
-    # out: 1 x 20 x 40
-)
-
 def weight_init(m):
     # weight_initialization: important for wgan
     class_name=m.__class__.__name__
@@ -303,11 +232,6 @@ def weight_init(m):
         m.weight.data.normal_(0,0.02)
     elif class_name.find('Norm')!=-1:
         m.weight.data.normal_(1.0,0.02)
-
-discriminator.apply(weight_init)
-generator.apply(weight_init)
-
-generator = to_device(generator, device)
 
 
 def train_discriminator(real_images, real_labels, opt_d):
@@ -370,7 +294,7 @@ def train_generator(real_labels, opt_g):
     # loss = wgan_loss
 
     # WGAN + Simulation Loss (Lambda = 0.1)
-    loss = 0.1 * wgan_loss + simulation_loss
+    loss = LAMBDA * wgan_loss + simulation_loss
 
     # Update generator weights
     loss.backward()
@@ -378,30 +302,117 @@ def train_generator(real_labels, opt_g):
 
     return loss.item(), simulation_loss
 
-sample_dir = 'generated'
-os.makedirs(sample_dir, exist_ok=True)
 
 
-def save_samples(index, latent_tensors, show=True, latent_label=None):
+def get_prediction_model():
+    MODEL_JSON_PATH = 'models/cnn_small_rmse_128_300/rmse_rect_1.json'
+    MODEL_H5_PATH = 'models/cnn_small_rmse_128_300/rmse_rect_1.h5'
+
+    # load json and create model
+    json_file = open(MODEL_JSON_PATH, 'r')
+    loaded_model_json = json_file.read()
+    json_file.close()
+    loaded_model = model_from_json(loaded_model_json)
+
+    # load weights into new model
+    loaded_model.load_weights(MODEL_H5_PATH)
+    return loaded_model
+
+
+def eval_samples(index, fake_images ):
+
+    result_match = dict()
+    result_top3 = dict()
+    result_top5 = dict()
+    result_truth = dict()
+    # Initialize result dict
+    for n in range(NUM_LABELS):
+        wavelength = n * 50 + 1000
+        result_match[str(wavelength)] = 0
+        result_top3[str(wavelength)] = 0
+        result_top5[str(wavelength)] = 0
+        result_truth[str(wavelength)] = 0
+
+    np_fake_images = fake_images.cpu().detach().numpy()
+    np_fake_images[np_fake_images > 0.5] = 1.0
+    np_fake_images[np_fake_images <= 0.5] = 0.0
+    prediction_model = get_prediction_model()
+    for i in range(np_fake_images.shape[0]):
+        np_fake_image = np_fake_images[i]
+        np_fake_image = np_fake_image.reshape((1, IMAGE_HEIGHT, IMAGE_WIDTH, 1))
+        real = prediction_model.predict(np_fake_image)
+        class_int = (i % NUM_LABELS)
+
+        argsort_top5 = (-real).argsort()[:, :5][0] - 12
+        argsort_top3 = (-real).argsort()[:, :3][0] - 12
+
+        if class_int in argsort_top5:
+            result_top5[str(wavelength)] += 1
+
+        if class_int in argsort_top3:
+            result_top3[str(wavelength)] += 1
+
+        if class_int == argsort_top3[0]:
+            result_match[str(wavelength)] += 1
+
+        if argsort_top3[0] > -1:
+            result_truth[str(argsort_top3[0] * 50 + 1000)] += 1
+
+        percent_match = sum(result_match.values()) / (NUM_LABELS * NUM_SAMPLES_PER_LABEL)
+        percent_top3 = sum(result_top3.values()) / (NUM_LABELS * NUM_SAMPLES_PER_LABEL)
+        percent_top5 = sum(result_top5.values()) / (NUM_LABELS * NUM_SAMPLES_PER_LABEL)
+
+    print(
+        'percent_match : {0:.4f} \t top3 : {1:.4f} \t top5 : {2:.4f}'.format(percent_match, percent_top3, percent_top5))
+
+    file_name = f'samples_{index}'
+    result_folder = f'{sample_dir}/example_result/{file_name}'
+    result_png = f'{sample_dir}/example_result/{file_name}/new_{file_name}.png'
+
+    if not os.path.exists(result_folder):
+        os.makedirs(result_folder)
+
+    plt.imsave(result_png, np_fake_images, cmap='Greys')
+
+    csv_file_result_match = "{}/{}_result_match.csv".format(result_folder, file_name)
+    csv_file_result_top3 = "{}/{}_result_top3.csv".format(result_folder, file_name)
+    csv_file_result_top5 = "{}/{}_result_top5.csv".format(result_folder, file_name)
+    csv_file_result_truth = "{}/{}_result_truth.csv".format(result_folder, file_name)
+    text_file_result = "{}/{}_result.txt".format(result_folder, file_name)
+
+    a_file = open(csv_file_result_match, "w")
+    writer = csv.writer(a_file)
+    for key, value in result_match.items():
+        writer.writerow([key, value])
+    a_file.close()
+    a_file = open(csv_file_result_top3, "w")
+    writer = csv.writer(a_file)
+    for key, value in result_top3.items():
+        writer.writerow([key, value])
+    a_file.close()
+    a_file = open(csv_file_result_truth, "w")
+    writer = csv.writer(a_file)
+    for key, value in result_truth.items():
+        writer.writerow([key, value])
+    a_file.close()
+    a_file = open(csv_file_result_top5, "w")
+    writer = csv.writer(a_file)
+    for key, value in result_top5.items():
+        writer.writerow([key, value])
+    a_file.close()
+    with open(text_file_result, "w+") as file:
+        file.write('match_cnt : {}, \t correct_cnt_top3 : {}, \t correct_cnt_top5 : {}\n'.format(
+            sum(result_match.values()), sum(result_top3.values()), sum(result_top5.values())))
+        file.write('percent_match : {0:.4f} \t top3 : {1:.4f} \t top5 : {2:.4f}'.format(percent_match, percent_top3,
+                                                                                        percent_top5))
+
+
+def save_samples(index, latent_tensors):
     fake_images = generator(latent_tensors)
-
+    # eval_samples(index, fake_images)
     fake_fname = 'generated-images-{0:0=4d}.png'.format(index)
-    save_image(denorm(fake_images), os.path.join(sample_dir, fake_fname), nrow=12)
+    save_image(denorm(fake_images), os.path.join(sample_dir, fake_fname), show=False, nrow=12)
     print('Saving', fake_fname)
-    if show:
-        fig, ax = plt.subplots(figsize=(12, 10))
-        ax.set_xticks([]);
-        ax.set_yticks([])
-        ax.imshow(make_grid(fake_images.cpu().detach(), nrow=12).permute(1, 2, 0))
-
-    if latent_label is not None:
-        return nn.CrossEntropyLoss()(simulator(fake_images), latent_label.float())
-
-fixed_label = F.one_hot(torch.from_numpy(np.array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11] * NUM_SAMPLES_PER_LABEL))).to(device)
-z = torch.randn(NUM_LABELS*NUM_SAMPLES_PER_LABEL, latent_size).to(device)
-fixed_latent = torch.cat((z, fixed_label), 1)
-fixed_latent = fixed_latent[:, :, None, None]
-save_samples(0, fixed_latent)
 
 
 def fit(epochs, lr, start_idx=1):
@@ -434,7 +445,7 @@ def fit(epochs, lr, start_idx=1):
         fake_scores.append(fake_score)
 
         # Save generated images
-        save_samples(epoch + start_idx, fixed_latent, show=False, latent_label=fixed_label)
+        save_samples(epoch + start_idx, fixed_latent)
 
         # Log losses & scores (last batch)
         print(
@@ -443,35 +454,135 @@ def fit(epochs, lr, start_idx=1):
 
     return losses_g, losses_d, real_scores, fake_scores, losses_c
 
-history = fit(epochs, lr)
-losses_g, losses_d, real_scores, fake_scores, losses_c = history
-# Save the model checkpoints
-torch.save(generator.state_dict(), 'G.pth')
-torch.save(discriminator.state_dict(), 'D.pth')
 
 
-files = [os.path.join(sample_dir, f) for f in os.listdir(sample_dir) if 'generated' in f]
-files.sort()
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-lr", "--learning_rate", help="Select sample_number", type=float, default=0.0002)
+    parser.add_argument("-ep", "--epochs", help="Select sample_number", type=int, default=20)
+    parser.add_argument("-l", "--lambda_rate", help="Select sample_number", type=int, default=0.1)
+    parser.add_argument("-dd", "--data_dir", help="Select sample_number", default='maxwellfdfd')
 
-images = []
-for filename in files:
-    images.append(imageio.imread(filename))
-imageio.mimsave(vid_fname, images)
+    args = parser.parse_args()
 
-# save loss curve
-plt.plot(losses_d, '-')
-plt.plot(losses_g, '-')
-plt.xlabel('epoch')
-plt.ylabel('loss')
-plt.legend(['Discriminator', 'Generator'])
-plt.title('Losses');
-plt.savefig('loss-sswgan-without-gp-ep200.png', dpi=300)
+    lr = args.learning_rate
+    epochs = args.epochs
+    LAMBDA = args.lambda_rate
 
-# save scores
-plt.plot(real_scores, '-')
-plt.plot(fake_scores, '-')
-plt.xlabel('epoch')
-plt.ylabel('score')
-plt.legend(['Real', 'Fake'])
-plt.title('Scores');
-plt.savefig('scores-sswgan-without-gp-ep200.png', dpi=300)
+    sample_dir = f'generated-lr{lr}-lambda{LAMBDA}-epochs{epochs}'
+    os.makedirs(sample_dir, exist_ok=True)
+
+    # sample_eval_dir = f'{sample_dir}/result'
+
+    vid_fname = f'wgan_w_sim_loss_training_{sample_dir}.gif'
+
+    # Data
+    data_dir = os.path.join(os.getcwd(), args.data_dir)
+
+    cem_train = CEMDataset(data_dir, train=True, scale=5, is_regression=True)
+
+    batch_size = 128
+    train_dl = DataLoader(cem_train, batch_size, shuffle=True, pin_memory=True)
+
+    # GPU
+    device = get_default_device()
+    train_dl = DeviceDataLoader(train_dl, device)
+
+    # model init
+
+    simulator = CnnModel()
+    simulator.load_state_dict(torch.load('cnn_model_ep50.pth'))
+    simulator.eval()
+
+    discriminator = nn.Sequential(
+        # in: 1 x 20 x 40
+
+        nn.Conv2d(1, 64, kernel_size=4, stride=2, padding=(0, 1), bias=False),
+        nn.LeakyReLU(0.2, inplace=True),
+
+        nn.Conv2d(64, 128, kernel_size=(3, 4), stride=2, padding=1, bias=False),
+        nn.BatchNorm2d(128),
+        nn.LeakyReLU(0.2, inplace=True),
+
+        nn.Conv2d(128, 256, kernel_size=(3, 4), stride=2, padding=1, bias=False),
+        nn.BatchNorm2d(256),
+        nn.LeakyReLU(0.2, inplace=True),
+
+        nn.Conv2d(256, 1, kernel_size=(3, 5), stride=1, padding=0, bias=False),
+        # out: 1 x 1 x 1
+
+        nn.Flatten(),
+        nn.Sigmoid()
+
+    )
+    print(discriminator)
+    simulator = to_device(simulator, device)
+    discriminator = to_device(discriminator, device)
+
+    generator = nn.Sequential(
+        # in: latent_size x 1 x 1
+        nn.ConvTranspose2d(latent_size + NUM_LABELS, 256, kernel_size=(3, 5), stride=1, padding=0, bias=False),
+        nn.BatchNorm2d(256),
+        nn.ReLU(True),
+
+        nn.ConvTranspose2d(256, 128, kernel_size=(3, 4), stride=2, padding=1, bias=False),
+        nn.BatchNorm2d(128),
+        nn.ReLU(True),
+
+        nn.ConvTranspose2d(128, 64, kernel_size=(3, 4), stride=2, padding=1, bias=False),
+        nn.BatchNorm2d(64),
+        nn.ReLU(True),
+
+        nn.ConvTranspose2d(64, 1, kernel_size=(4, 4), stride=2, padding=(0, 1), bias=False),
+        nn.Tanh()
+        # out: 1 x 20 x 40
+    )
+    discriminator.apply(weight_init)
+    generator.apply(weight_init)
+
+    generator = to_device(generator, device)
+
+    # Test Label
+    fixed_label = F.one_hot(
+        torch.from_numpy(np.array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11] * NUM_SAMPLES_PER_LABEL))).to(device)
+    z = torch.randn(NUM_LABELS * NUM_SAMPLES_PER_LABEL, latent_size).to(device)
+    fixed_latent = torch.cat((z, fixed_label), 1)
+    fixed_latent = fixed_latent[:, :, None, None]
+    # save_samples(0, fixed_latent, show=False)
+
+    history = fit(epochs, lr)
+    losses_g, losses_d, real_scores, fake_scores, losses_c = history
+    # Save the model checkpoints
+    torch.save(generator.state_dict(), 'G.pth')
+    torch.save(discriminator.state_dict(), 'D.pth')
+
+
+    files = [os.path.join(sample_dir, f) for f in os.listdir(sample_dir) if 'generated' in f]
+    files.sort()
+
+    images = []
+    for filename in files:
+        images.append(imageio.imread(filename))
+    imageio.mimsave(vid_fname, images)
+
+    # save loss curve
+    plt.clf()
+    plt.plot(losses_d, '-')
+    plt.plot(losses_g, '-')
+    plt.xlabel('epoch')
+    plt.ylabel('loss')
+    plt.legend(['Discriminator', 'Generator'])
+    plt.title('Losses')
+    plt.savefig(f'loss-{sample_dir}.png', dpi=300)
+    plt.clf()
+
+    # save scores
+    #print('real_scores', real_scores[0])
+    #print('real_scores', fake_scores[0])
+    plt.plot(real_scores, '-')
+    plt.plot(fake_scores, '-')
+    plt.xlabel('epoch')
+    plt.ylabel('score')
+    plt.legend(['Real', 'Fake'])
+    plt.title('Scores')
+    plt.savefig(f'scores-{sample_dir}.png', dpi=300)
