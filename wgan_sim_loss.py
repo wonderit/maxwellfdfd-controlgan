@@ -298,7 +298,10 @@ def train_generator(real_labels, opt_g):
     # loss = wgan_loss
 
     # WGAN + Simulation Loss (Lambda = 0.1)
-    loss = LAMBDA * wgan_loss + simulation_loss
+    if gan_type == 'wgan':
+        loss = wgan_loss
+    else:
+        loss = LAMBDA * wgan_loss + simulation_loss
 
     # Update generator weights
     loss.backward()
@@ -467,14 +470,16 @@ if __name__ == '__main__':
     parser.add_argument("-l", "--lambda_rate", help="Select sample_number", type=float, default=0.1)
     parser.add_argument("-dd", "--data_dir", help="Select sample_number", default='maxwellfdfd')
     parser.add_argument("-lt", "--loss_type", help="Select sample_number", default='mse')
+    parser.add_argument("-gt", "--gan_type", help="Select sample_number", default='sim')
 
     args = parser.parse_args()
 
     lr = args.learning_rate
     epochs = args.epochs
     LAMBDA = args.lambda_rate
+    gan_type = args.gan_type
 
-    sample_dir = f'generated-lr{lr}-lambda{LAMBDA}-epochs{epochs}-{args.loss_type}'
+    sample_dir = f'{gan_type}-lr{lr}-lambda{LAMBDA}-epochs{epochs}-{args.loss_type}'
     os.makedirs(sample_dir, exist_ok=True)
 
     # sample_eval_dir = f'{sample_dir}/result'
