@@ -132,9 +132,11 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("-ns", "--sample_number_start", help="Select sample_number", type=int, default=1)
     parser.add_argument("-ne", "--sample_number_end", help="Select sample_number", type=int, default=10)
+    parser.add_argument("-fn", "--folder_name", help="Select sample_number", default='./generated-lr2e4-lambda1')
 
     args = parser.parse_args()
-    folder_name = './generated-lr2e4-lambda1'
+    # folder_name = './generated-lr2e4-lambda1'
+    folder_name = args.folder_name
 
     n_classes = 12
     n_count = 10

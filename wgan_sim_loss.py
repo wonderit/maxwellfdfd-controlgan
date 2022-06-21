@@ -287,7 +287,11 @@ def train_generator(real_labels, opt_g):
     # add simulator loss
     simulator.eval()
     simulation = simulator(fake_images)
-    simulation_loss = F.mse_loss(simulation, label_encoded.float())
+
+    if args.loss_type == 'mse':
+        simulation_loss = F.mse_loss(simulation, label_encoded.float())
+    else:
+        simulation_loss = F.cross_entropy(simulation, label_encoded.float())
     # loss = 0.1 * bce_loss + c_loss
 
     # WGAN
@@ -460,8 +464,9 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("-lr", "--learning_rate", help="Select sample_number", type=float, default=0.0002)
     parser.add_argument("-ep", "--epochs", help="Select sample_number", type=int, default=20)
-    parser.add_argument("-l", "--lambda_rate", help="Select sample_number", type=int, default=0.1)
+    parser.add_argument("-l", "--lambda_rate", help="Select sample_number", type=float, default=0.1)
     parser.add_argument("-dd", "--data_dir", help="Select sample_number", default='maxwellfdfd')
+    parser.add_argument("-lt", "--loss_type", help="Select sample_number", default='mse')
 
     args = parser.parse_args()
 
@@ -469,7 +474,7 @@ if __name__ == '__main__':
     epochs = args.epochs
     LAMBDA = args.lambda_rate
 
-    sample_dir = f'generated-lr{lr}-lambda{LAMBDA}-epochs{epochs}'
+    sample_dir = f'generated-lr{lr}-lambda{LAMBDA}-epochs{epochs}-{args.loss_type}'
     os.makedirs(sample_dir, exist_ok=True)
 
     # sample_eval_dir = f'{sample_dir}/result'
