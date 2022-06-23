@@ -3,6 +3,8 @@ import pandas as pd
 import pickle
 import os
 from PIL import Image
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 DATASETS_TRAIN = [
     'binary_501',
@@ -147,14 +149,6 @@ def cem_generator(data_type, batch_size, data_dir, is_regression=False):
     if not is_regression:
         all_labels_df = all_labels_df.apply(lambda x: np.argmax(x), axis=1)
 
-    # Countplot
-    # y_train_df_for_countplot = pd.DataFrame(all_labels_df)
-    # y_train_df_for_countplot.columns = ['wavelength (nm)']
-    # sns.countplot(x="wavelength (nm)", data=y_train_df_for_countplot)
-    # plt.title('Countplot for max transmittance wavelength')
-    # plt.show()
-    # exit()
-
     print('Data Loading... Train dataset Finished.')
     images = all_data
     labels = all_labels_df.values
@@ -168,6 +162,17 @@ def cem_generator(data_type, batch_size, data_dir, is_regression=False):
     else:
         labels = labels[:, 12:]
         print(labels.shape)
+
+    # Countplot
+    # labels = labels * 50 + 1000
+    # y_train_df_for_countplot = pd.DataFrame(labels)
+    # y_train_df_for_countplot.columns = ['wavelength (nm)']
+    # palette3 = sns.color_palette('coolwarm', 12)
+    # sns.countplot(x="wavelength (nm)", data=y_train_df_for_countplot, palette=palette3)
+    # plt.title('Countplot for wavelength with max transmittance')
+    # plt.savefig(f'countplot_len{labels.shape[0]}.png', dpi=300)
+    # plt.show()
+    # exit()
 
     def get_epoch():
         rng_state = np.random.get_state()
@@ -232,8 +237,8 @@ def main():
 def cem(n):
     batch_size = 1
     data_dir = '../data'
-    # train_gen = cem_generator('train',  batch_size, data_dir)
-    test_gen = cem_generator('test', batch_size, data_dir, is_regression=True)
+    train_gen = cem_generator('train',  batch_size, data_dir)
+    # test_gen = cem_generator('test', batch_size, data_dir, is_regression=True)
 
     def inf_train_gen():
         while True:
@@ -269,12 +274,6 @@ def cem(n):
                     f.write(",%.6f" % v)
                 f.write("\n")
 
-if __name__ == "__main__":
-    cem(5)
-    cem(6)
-    cem(7)
-    cem(8)
-    cem(9)
-    cem(10)
-    cem(11)
 
+if __name__ == "__main__":
+    train_gen = cem_generator('train',  27000, './data')
