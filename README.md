@@ -44,6 +44,13 @@ pip install -r requirements.txt
     python controlgan.py
     ```
 
+    - simulator loss (simgan)
+    ```shell script
+    # train simulator model    
+    python train_cnn_torch.ipynb
+    # train gan
+    python train_simGAN.py
+    ```
 
 * Test
     ```shell script
@@ -61,10 +68,10 @@ pip install -r requirements.txt
 https://github.com/wonderit/maxwellfdfd
 
 ## Reference
-https://github.com/BrainJellyPie/ControlGAN
-
-https://github.com/igul222/improved_wgan_training
-
-https://github.com/wonderit/maxwellfdfd-ai
-
-https://github.com/wonderit/ControlGAN
+- https://github.com/BrainJellyPie/ControlGAN
+- https://github.com/igul222/improved_wgan_training
+- https://github.com/wonderit/maxwellfdfd-ai
+- https://github.com/wonderit/ControlGAN
+- Kim, Wonsuk, and Junhee Seok. "Simulation acceleration for transmittance of electromagnetic waves in 2D slit arrays using deep learning." Scientific reports 10.1 (2020): 1-8.
+- Lee, Minhyeok, and Junhee Seok. "Controllable generative adversarial network." Ieee Access 7 (2019): 28158-28169.
+- Liu, Zhaocheng, et al. "Generative model for the inverse design of metasurfaces." Nano letters 18.10 (2018): 6570-6576.
