@@ -14,6 +14,8 @@ import os
 from sklearn.multioutput import MultiOutputRegressor
 from sklearn.neural_network import MLPRegressor
 from sklearn.svm import SVR
+import functools
+import tflib as lib
 
 
 class CustomLoss:
@@ -111,6 +113,118 @@ def compress_image(prev_image, n):
         for j in range(0, width):
             new_image[i, j] = prev_image[n * i, n * j]
     return new_image
+
+NUM_LABELS = 12
+CONDITIONAL = True
+ACGAN = True
+NORMALIZATION_G = True  # Use batchnorm in generator? only t
+NORMALIZATION_D = False  # Use batchnorm (or layernorm) in critic? only f
+NORMALIZATION_C = True  # Use batchnorm (or layernorm) in classifier?t or f
+
+def ConvMeanPool(name, input_dim, output_dim, filter_size, inputs, he_init=True, biases=True, s_norm=False):
+    output = lib.ops.conv2d.Conv2D(name, input_dim, output_dim, filter_size, inputs, he_init=he_init, biases=biases,
+                                   s_norm=s_norm)
+    output = tf.add_n(
+        [output[:, :, ::2, ::2], output[:, :, 1::2, ::2], output[:, :, ::2, 1::2], output[:, :, 1::2, 1::2]]) / 4.
+    return output
+
+def UpsampleConv(name, input_dim, output_dim, filter_size, inputs, he_init=True, biases=True, s_norm=False):
+    output = inputs
+    output = tf.concat([output, output, output, output], axis=1)
+    output = tf.transpose(output, [0, 2, 3, 1])
+    output = tf.nn.depth_to_space(output, 2)
+    output = tf.transpose(output, [0, 3, 1, 2])
+    output = lib.ops.conv2d.Conv2D(name, input_dim, output_dim, filter_size, output, he_init=he_init, biases=biases,
+                                   s_norm=s_norm)
+    return output
+def nonlinearity(x):
+    return tf.nn.relu(x)
+def Normalize(name, inputs, labels=None):
+    """This is messy, but basically it chooses between batchnorm, layernorm,
+    their conditional variants, or nothing, depending on the value of `name` and
+    the global hyperparam flags."""
+    if not CONDITIONAL:
+        labels = None
+    if CONDITIONAL and ACGAN and ('Discriminator' in name):
+        labels = None
+    if CONDITIONAL and ACGAN and ('Classifier' in name):
+        labels = None
+
+    if ('Discriminator' in name) and NORMALIZATION_D:
+        return lib.ops.layernorm.Layernorm(name, [1, 2, 3], inputs, labels=labels, n_labels=NUM_LABELS)
+    elif ('Classifier' in name) and NORMALIZATION_C:
+        return lib.ops.layernorm.Layernorm(name, [1, 2, 3], inputs)
+    elif ('Generator' in name) and NORMALIZATION_G:
+        if labels is not None:
+            # print('labels:', labels.dtype, labels)
+            # labels = tf.cast(labels, tf.int32)
+            return lib.ops.cond_batchnorm.Batchnorm(name, [0, 2, 3], inputs, labels=labels, n_labels=NUM_LABELS)
+        else:
+            return lib.ops.batchnorm.Batchnorm(name, [0, 2, 3], inputs, fused=True)
+    else:
+        return inputs
+def ResidualBlock(name, input_dim, output_dim, filter_size, inputs, resample=None, no_dropout=False, labels=None,
+                  s_norm=False):
+    """
+    resample: None, 'down', or 'up'
+    """
+    if resample == 'down':
+        conv_1 = functools.partial(lib.ops.conv2d.Conv2D, input_dim=input_dim, output_dim=input_dim, s_norm=s_norm)
+        conv_2 = functools.partial(ConvMeanPool, input_dim=input_dim, output_dim=output_dim, s_norm=s_norm)
+        conv_shortcut = functools.partial(ConvMeanPool, s_norm=s_norm)
+    elif resample == 'up':
+        conv_1 = functools.partial(UpsampleConv, input_dim=input_dim, output_dim=output_dim, s_norm=s_norm)
+        conv_shortcut = functools.partial(UpsampleConv, s_norm=s_norm)
+        conv_2 = functools.partial(lib.ops.conv2d.Conv2D, input_dim=output_dim, output_dim=output_dim, s_norm=s_norm)
+    elif resample == None:
+        conv_shortcut = functools.partial(lib.ops.conv2d.Conv2D, s_norm=s_norm)
+        conv_1 = functools.partial(lib.ops.conv2d.Conv2D, input_dim=input_dim, output_dim=output_dim, s_norm=s_norm)
+        conv_2 = functools.partial(lib.ops.conv2d.Conv2D, input_dim=output_dim, output_dim=output_dim, s_norm=s_norm)
+    else:
+        raise Exception('invalid resample value')
+
+    if output_dim == input_dim and resample == None:
+        shortcut = inputs  # Identity skip-connection
+    else:
+        shortcut = conv_shortcut(name + '.Shortcut', input_dim=input_dim, output_dim=output_dim, filter_size=1,
+                                 he_init=False, biases=True, inputs=inputs)
+
+    output = inputs
+    output = Normalize(name + '.N1', output, labels=labels)
+    output = nonlinearity(output)
+    output = conv_1(name + '.Conv1', filter_size=filter_size, inputs=output)
+    output = Normalize(name + '.N2', output, labels=labels)
+    output = nonlinearity(output)
+    output = conv_2(name + '.Conv2', filter_size=filter_size, inputs=output)
+
+    return shortcut + output
+def OptimizedResBlockClass1(inputs):
+    conv_1 = functools.partial(lib.ops.conv2d.Conv2D, input_dim=1, output_dim=32)
+    conv_2 = functools.partial(lib.ops.conv2d.Conv2D, input_dim=32, output_dim=32)
+    conv_shortcut = functools.partial(lib.ops.conv2d.Conv2D)
+    shortcut = conv_shortcut('Classifier.1.Shortcut', input_dim=1, output_dim=32, filter_size=1, he_init=False,
+                             biases=True, inputs=inputs)
+
+    output = inputs
+    output = conv_1('Classifier.1.Conv1', filter_size=3, inputs=output)
+    output = nonlinearity(output)
+    output = conv_2('Classifier.1.Conv2', filter_size=3, inputs=output)
+    return shortcut + output
+def create_resnet_model(inputs, labels):
+    output = tf.reshape(inputs, [-1, 1, 20, 40])
+    output = OptimizedResBlockClass1(output)
+    output = ResidualBlock('Classifier.2', 32, 32, 3, output, resample='down', labels=labels)
+    # output = ResidualBlock('Classifier.3', 32, 32, 3, output, resample='down', labels=labels)
+    # output = ResidualBlock('Classifier.4', 32, 64, 3, output, resample=None, labels=labels)
+    output = ResidualBlock('Classifier.5', 32, 32, 3, output, resample=None, labels=labels)
+    output = ResidualBlock('Classifier.6', 32, 32, 3, output, resample=None, labels=labels)
+    # TODO Add normalize
+    output = Normalize('Classifier.OutputN', output)
+    output = nonlinearity(output)
+    output = tf.reduce_mean(output, axis=[2, 3])
+    output_cgan = lib.ops.linear.Linear('Classifier.Output', 32, NUM_LABELS, output)
+    return output_cgan
+
 
 
 def create_model(model_type, model_input_shape, loss_function):
